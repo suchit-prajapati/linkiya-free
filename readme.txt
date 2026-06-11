@@ -114,8 +114,8 @@ The free version of this plugin does not connect to any external services. All p
 Linkiya Pro (a separate plugin sold at mypluginstore.com) optionally connects to mypluginstore.com solely for license key verification. When a license key is activated or verified:
 * The license key and your site URL are sent to mypluginstore.com
 * No post content, user data, or personal information is transmitted
-* Terms of service: https://www.mypluginstore.com/terms
-* Privacy policy: https://www.mypluginstore.com/privacy
+* Terms of service: https://www.mypluginstore.com/terms-of-service
+* Privacy policy: https://www.mypluginstore.com/privacy-policy
 
 == Screenshots ==
 
