@@ -1,0 +1,14 @@
+{
+  "name": "linkiya",
+  "version": "1.0.0",
+  "description": "Smart Internal Linking plugin for WordPress",
+  "author": "My Plugin Store Team",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "start": "wp-scripts start src/sidebar.js --output-path=build",
+    "build": "wp-scripts build src/sidebar.js --output-path=build"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^32.4.0"
+  }
+}
