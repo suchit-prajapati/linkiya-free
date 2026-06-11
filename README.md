@@ -122,18 +122,20 @@ linkiya/
 ├── src/                      ← edit these
 │   ├── sidebar.js
 │   └── sidebar.css
+├── .gitignore
 ├── linkiya.php               ← main plugin file
+├── package.json              ← npm config
+├── package-lock.json         ← npm lock file (do not edit manually)
+├── README.md                 ← GitHub readme
 ├── readme.txt                ← WP.org readme
-├── uninstall.php
-├── package.json
-└── .gitignore
+└── uninstall.php
 ```
 
 ---
 
 ## REST API
 
-Linkiya exposes two REST endpoints used by the Gutenberg sidebar:
+Linkiya exposes REST endpoints used by the Gutenberg sidebar:
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -147,43 +149,109 @@ All endpoints require `edit_posts` capability. The `/suggest` and `/apply` endpo
 
 ## Hooks for Developers
 
-Linkiya Pro hooks into the free plugin using standard WordPress filters and actions. You can use these same hooks in your own plugins:
+Linkiya uses standard WordPress filters and actions so addons can extend it cleanly.
 
+### `linkiya_loaded` _(action)_
+Fires after the free plugin initialises. Use this to init your addon.
 ```php
-// Add custom post types to suggestion scan
+add_action( 'linkiya_loaded', function() {
+    // your addon init here
+} );
+```
+
+### `linkiya_suggest_post_types` _(filter)_
+Add custom post types to the link suggestion scan.
+```php
+// $types = ['post', 'page'] by default
 add_filter( 'linkiya_suggest_post_types', function( $types, $post_id ) {
-    $types[] = 'my_custom_type';
+    $types[] = 'my_custom_post_type';
     return $types;
 }, 10, 2 );
+```
 
-// Add or modify keyword map
+### `linkiya_post_keywords` _(filter)_
+Add or modify keywords extracted from a single post title.
+```php
+// $keywords = ['keyword one', 'keyword', 'one'] — sorted longest-first
+add_filter( 'linkiya_post_keywords', function( $keywords, $post_id ) {
+    $keywords[] = 'custom keyword';
+    return $keywords;
+}, 10, 2 );
+```
+
+### `linkiya_keyword_map` _(filter)_
+Modify the full keyword map before suggestions are generated.
+Each entry has: `post_id`, `title`, `url`, `post_type`, `keywords[]`.
+```php
 add_filter( 'linkiya_keyword_map', function( $map, $post_id ) {
-    $map['custom keyword'] = [ 'url' => 'https://example.com', 'post_id' => 123 ];
+    // Add a custom entry
+    $map[] = [
+        'post_id'   => 0,
+        'title'     => 'My Custom Page',
+        'url'       => 'https://example.com/my-page',
+        'post_type' => 'custom',
+        'keywords'  => [ 'my custom page', 'custom page' ],
+    ];
     return $map;
 }, 10, 2 );
+```
 
-// Filter suggestions before returning to sidebar
+### `linkiya_suggestions` _(filter)_
+Filter the final suggestions array before returning to the sidebar.
+```php
 add_filter( 'linkiya_suggestions', function( $suggestions, $post_id ) {
     // Remove suggestions to posts in a specific category
-    return array_filter( $suggestions, function( $s ) {
+    return array_values( array_filter( $suggestions, function( $s ) {
         return ! has_category( 'excluded', $s['post_id'] );
-    });
+    } ) );
 }, 10, 2 );
+```
 
-// Hook into after links are applied
+### `linkiya_link_attrs` _(filter)_
+Add extra HTML attributes to applied links (e.g. for click tracking).
+```php
+// $attrs = ' target="_blank"' or ' rel="nofollow"' etc.
+add_filter( 'linkiya_link_attrs', function( $attrs, $url ) {
+    $attrs .= ' data-tracked="1"';
+    return $attrs;
+}, 10, 2 );
+```
+
+### `linkiya_links_applied` _(action)_
+Fires after links are applied to a post. Use to log or process applied links.
+```php
 add_action( 'linkiya_links_applied', function( $post_id, $applied_links ) {
-    // Log or process applied links
+    foreach ( $applied_links as $link ) {
+        // $link has: keyword, anchor, post_id, url, nofollow, new_tab
+        error_log( "Link applied: {$link['anchor']} → {$link['url']}" );
+    }
 }, 10, 2 );
+```
 
-// Add extra fields to settings page
+### `linkiya_settings_fields` _(action)_
+Add extra rows to the settings page form table.
+```php
 add_action( 'linkiya_settings_fields', function( $settings ) {
-    echo '<tr><th>My Setting</th><td>...</td></tr>';
-});
+    ?>
+    <tr>
+        <th scope="row"><label for="my_setting">My Setting</label></th>
+        <td>
+            <input type="text" id="my_setting" name="my_setting"
+                value="<?php echo esc_attr( $settings['my_setting'] ?? '' ); ?>">
+        </td>
+    </tr>
+    <?php
+} );
+```
 
-// Fired when free plugin is loaded — use to init your addon
-add_action( 'linkiya_loaded', function() {
-    // Your addon init here
-});
+### `linkiya_rest_status` _(filter)_
+Modify the status response returned by `/wp-json/linkiya/v1/status`.
+```php
+add_filter( 'linkiya_rest_status', function( $status ) {
+    $status['is_pro']              = true;
+    $status['features']['bulk_mode'] = true;
+    return $status;
+} );
 ```
 
 ---
