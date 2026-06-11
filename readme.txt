@@ -102,7 +102,7 @@ All data is stored in your own WordPress database. Linkiya does not connect to a
 == Source Code ==
 
 The Gutenberg sidebar is built from source available at:
-https://github.com/mypluginstore/linkiya/tree/main/src
+https://github.com/suchit-prajapati/linkiya-free/tree/main/src
 
 Build tool: webpack (via @wordpress/scripts)
 To rebuild: `npm install && npm run build`
