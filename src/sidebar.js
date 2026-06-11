@@ -41,16 +41,8 @@ function SmartInternalLinkerSidebar() {
     const [appliedCount,  setAppliedCount]  = useState( 0 );
     const [orphanCount,   setOrphanCount]   = useState( null );
 
-    // Fetch orphan count for teaser (all users)
-    useEffect( () => {
-        const orphanUrl = linkiyaData.restBase + 'linkiya-licenses/v1/orphan-count';
-        fetch( orphanUrl, {
-            headers: { 'X-WP-Nonce': linkiyaData.nonce },
-        } )
-        .then( r => r.ok ? r.json() : null )
-        .then( d => { if ( d && typeof d.count !== 'undefined' ) setOrphanCount( d.count ); } )
-        .catch( () => {} );
-    }, [] );
+    // Orphan count teaser — only available in Pro
+    // useEffect omitted in free version; Pro plugin overrides sidebar via linkiya_sidebar_data filter
 
     /* ── Run analysis ─────────────────────────────────────────────── */
 
@@ -141,11 +133,11 @@ function SmartInternalLinkerSidebar() {
     return (
         <>
             <PluginSidebarMoreMenuItem target="linkiya-sidebar">
-                { __( 'Smart Internal Linker', 'linkiya' ) }
+                { __( 'Linkiya', 'linkiya' ) }
                 { isPro && <span style={{color:'#10b981',fontSize:'10px',fontWeight:700,marginLeft:4}}>PRO</span> }
             </PluginSidebarMoreMenuItem>
 
-            <PluginSidebar name="linkiya-sidebar" title={ __( 'Smart Internal Linker', 'linkiya' ) } icon={ ICON }>
+            <PluginSidebar name="linkiya-sidebar" title={ __( 'Linkiya', 'linkiya' ) } icon={ ICON }>
                 <PanelBody>
 
                     { /* Pro / Free banner */ }
@@ -158,7 +150,7 @@ function SmartInternalLinkerSidebar() {
                             <div className="linkiya-free-banner">
                                 { __( 'Free version — scanning Posts & Pages only.', 'linkiya' ) }
                                 { ' ' }
-                                <a href={ adminUrl('linkiya-license') } target="_blank" rel="noreferrer">
+                                <a href={ 'https://www.mypluginstore.com/linkiya' } target="_blank" rel="noreferrer">
                                     { __( 'Upgrade to Pro →', 'linkiya' ) }
                                 </a>
                             </div>
@@ -178,7 +170,7 @@ function SmartInternalLinkerSidebar() {
                                 <span className="linkiya-orphan-count">⚠️ { orphanCount }</span>
                                 { ' ' + __( 'orphaned posts found', 'linkiya' ) + ' ' }
                                 <a
-                                    href={ adminUrl( isPro ? 'linkiya-orphans' : 'linkiya-license' ) }
+                                    href={ adminUrl( isPro ? 'linkiya-orphans' : '' ) || 'https://www.mypluginstore.com/linkiya' }
                                     className="linkiya-orphan-link"
                                     target="_blank"
                                     rel="noreferrer"
@@ -282,7 +274,7 @@ function SmartInternalLinkerSidebar() {
                                                     />
                                                     { /* Anchor text edit toggle */ }
                                                     <button
-                                                        className={ `sil-edit-anchor-btn${ editingAnchor[ s.keyword ] ? ' active' : '' }` }
+                                                        className={ `linkiya-edit-anchor-btn${ editingAnchor[ s.keyword ] ? ' active' : '' }` }
                                                         onClick={ () => toggleAnchorEdit( s.keyword ) }
                                                         title={ __( 'Edit anchor text', 'linkiya' ) }
                                                         type="button"
