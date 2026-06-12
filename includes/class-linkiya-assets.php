@@ -61,10 +61,11 @@ class Linkiya_Assets {
 		$sidebar_data = apply_filters(
 			'linkiya_sidebar_data',
 			array(
-				'restUrl'  => esc_url_raw( rest_url( 'linkiya/v1' ) ),
-				'nonce'    => wp_create_nonce( 'wp_rest' ),
-				'isPro'    => false,
-				'adminUrl' => esc_url_raw( admin_url() ),
+				'restUrl'    => esc_url_raw( rest_url( 'linkiya/v1' ) ),
+				'nonce'      => wp_create_nonce( 'wp_rest' ),
+				'isPro'      => false,
+				'adminUrl'   => esc_url_raw( admin_url() ),
+				'upgradeUrl' => 'https://www.mypluginstore.com/linkiya',
 			)
 		);
 

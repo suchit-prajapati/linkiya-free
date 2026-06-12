@@ -6,7 +6,7 @@ import { useState, useEffect } from '@wordpress/element';
 import {
     Button, CheckboxControl, Spinner, Notice, PanelBody, PanelRow, TextControl,
 } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 const ICON = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -134,7 +134,7 @@ function SmartInternalLinkerSidebar() {
         <>
             <PluginSidebarMoreMenuItem target="linkiya-sidebar">
                 { __( 'Linkiya', 'linkiya' ) }
-                { isPro && <span style={{color:'#10b981',fontSize:'10px',fontWeight:700,marginLeft:4}}>PRO</span> }
+                { isPro && <span className="linkiya-pro-menu-badge">PRO</span> }
             </PluginSidebarMoreMenuItem>
 
             <PluginSidebar name="linkiya-sidebar" title={ __( 'Linkiya', 'linkiya' ) } icon={ ICON }>
@@ -150,7 +150,7 @@ function SmartInternalLinkerSidebar() {
                             <div className="linkiya-free-banner">
                                 { __( 'Free version — scanning Posts & Pages only.', 'linkiya' ) }
                                 { ' ' }
-                                <a href={ 'https://www.mypluginstore.com/linkiya' } target="_blank" rel="noreferrer">
+                                <a href={ linkiyaData.upgradeUrl } target="_blank" rel="noreferrer">
                                     { __( 'Upgrade to Pro →', 'linkiya' ) }
                                 </a>
                             </div>
@@ -170,7 +170,7 @@ function SmartInternalLinkerSidebar() {
                                 <span className="linkiya-orphan-count">⚠️ { orphanCount }</span>
                                 { ' ' + __( 'orphaned posts found', 'linkiya' ) + ' ' }
                                 <a
-                                    href={ adminUrl( isPro ? 'linkiya-orphans' : '' ) || 'https://www.mypluginstore.com/linkiya' }
+                                    href={ isPro ? adminUrl( 'linkiya-orphans' ) : linkiyaData.upgradeUrl }
                                     className="linkiya-orphan-link"
                                     target="_blank"
                                     rel="noreferrer"
@@ -211,9 +211,11 @@ function SmartInternalLinkerSidebar() {
                     { status === STATUS.APPLIED && (
                         <PanelRow>
                             <Notice status="success" isDismissible={ false }>
-                                { appliedCount }{ ' ' }
-                                { __( 'internal link', 'linkiya' ) }{ appliedCount !== 1 ? 's' : '' }{ ' ' }
-                                { __( 'applied! Hit', 'linkiya' ) }{ ' ' }
+                                { sprintf(
+                                    _n( '%d internal link applied!', '%d internal links applied!', appliedCount, 'linkiya' ),
+                                    appliedCount
+                                ) }
+                                { ' ' }{ __( 'Hit', 'linkiya' ) }{ ' ' }
                                 <strong>{ __( 'Update', 'linkiya' ) }</strong>{ ' ' }
                                 { __( 'to save.', 'linkiya' ) }
                             </Notice>
@@ -308,7 +310,10 @@ function SmartInternalLinkerSidebar() {
                                             >
                                                 { status === STATUS.APPLYING
                                                     ? __( 'Applying…', 'linkiya' )
-                                                    : `${ __( 'Apply', 'linkiya' ) } ${ selectedCount } ${ __( 'Link', 'linkiya' ) }${ selectedCount !== 1 ? 's' : '' }` }
+                                                    : sprintf(
+                                            _n( 'Apply %d Link', 'Apply %d Links', selectedCount, 'linkiya' ),
+                                            selectedCount
+                                        ) }
                                             </Button>
                                             <Button
                                                 variant="secondary"
