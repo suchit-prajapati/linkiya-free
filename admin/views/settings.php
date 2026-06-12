@@ -1,4 +1,7 @@
-<?php defined( 'ABSPATH' ) || exit; ?>
+<?php
+defined( 'ABSPATH' ) || exit;
+/** @var array $settings */
+?>
 <div class="wrap">
     <h1>⚙️ <?php esc_html_e( 'Linkiya — Settings', 'linkiya' ); ?></h1>
 
