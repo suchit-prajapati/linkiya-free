@@ -33,35 +33,35 @@ class Linkiya_Matcher {
         // Also strip all other HTML tags to get plain searchable text.
         $plain_text = wp_strip_all_tags( $stripped );
 
-        $suggestions        = [];
-        $matched_keywords   = []; // track keywords already matched (avoid duplicates)
-        $matched_post_ids   = []; // each post can only appear once in suggestions
+        $suggestions      = [];
+        $matched_keywords = []; // O(1) set: keyword => true
+        $matched_post_ids = []; // O(1) set: post_id => true
 
         foreach ( $keyword_map as $entry ) {
             $entry_id = (int) $entry['post_id'];
 
-            if ( $entry_id > 0 && in_array( $entry_id, $matched_post_ids, true ) ) {
+            if ( $entry_id > 0 && isset( $matched_post_ids[ $entry_id ] ) ) {
                 continue;
             }
 
             // Keywords are already sorted longest-first by the extractor.
             foreach ( $entry['keywords'] as $keyword ) {
-                if ( in_array( $keyword, $matched_keywords, true ) ) {
+                if ( isset( $matched_keywords[ $keyword ] ) ) {
                     continue; // keyword already used for another post
                 }
 
                 if ( self::keyword_exists_in_text( $keyword, $plain_text ) ) {
-                    $suggestions[]      = [
+                    $suggestions[]                    = [
                         'keyword'    => $keyword,
                         'post_id'    => $entry['post_id'],
                         'post_title' => $entry['title'],
                         'post_type'  => $entry['post_type'] ?? 'post',
                         'url'        => $entry['url'],
-                        'nofollow'   => ! empty( $entry['nofollow'] ), // P6
-                        'new_tab'    => ! empty( $entry['new_tab'] ),  // P6
+                        'nofollow'   => ! empty( $entry['nofollow'] ),
+                        'new_tab'    => ! empty( $entry['new_tab'] ),
                     ];
-                    $matched_keywords[] = $keyword;
-                    $matched_post_ids[] = $entry['post_id'];
+                    $matched_keywords[ $keyword ]     = true;
+                    $matched_post_ids[ $entry_id ]    = true;
                     break; // one keyword per post is enough
                 }
             }

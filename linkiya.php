@@ -30,6 +30,7 @@ require_once LINKIYA_PLUGIN_DIR . 'includes/class-linkiya-assets.php';
 require_once LINKIYA_PLUGIN_DIR . 'includes/class-linkiya-settings.php';
 
 add_action( 'plugins_loaded', function () {
+    Linkiya_Keyword_Extractor::init(); // cache invalidation hooks
     Linkiya_REST_API::init();
     Linkiya_Assets::init();
     Linkiya_Settings::init();
