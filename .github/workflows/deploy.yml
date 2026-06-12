@@ -32,6 +32,7 @@ jobs:
             **/node_modules/**
             **/src/**
             package.json
+            readme.md
             package-lock.json
             .eslintrc*
             .editorconfig
