@@ -70,7 +70,7 @@ class Linkiya_Settings {
         check_admin_referer( 'linkiya_settings_nonce' );
         if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
 
-        $input = $_POST['linkiya_settings'] ?? [];
+        $input = isset( $_POST['linkiya_settings'] ) ? wp_unslash( $_POST['linkiya_settings'] ) : [];
 
         $clean = [
             'min_word_length'    => absint( $input['min_word_length'] ?? 4 ),
@@ -112,14 +112,18 @@ class Linkiya_Settings {
         check_admin_referer( 'linkiya_import_settings' );
         if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
 
-        $file = $_FILES['linkiya_import_file'] ?? null;
+        $file = isset( $_FILES['linkiya_import_file'] ) ? wp_unslash( $_FILES['linkiya_import_file'] ) : null;
         if ( ! $file || $file['error'] !== UPLOAD_ERR_OK ) {
             wp_safe_redirect( add_query_arg( [ 'page' => 'linkiya', 'import_error' => '1' ], admin_url( 'admin.php' ) ) );
             exit;
         }
 
         require_once ABSPATH . 'wp-admin/includes/file.php';
-        WP_Filesystem();
+        $creds = request_filesystem_credentials( '', '', false, false, null );
+        if ( ! WP_Filesystem( $creds ) ) {
+            wp_safe_redirect( add_query_arg( [ 'page' => 'linkiya', 'import_error' => '1' ], admin_url( 'admin.php' ) ) );
+            exit;
+        }
         global $wp_filesystem;
         $json = $wp_filesystem->get_contents( $file['tmp_name'] );
         if ( false === $json ) {
