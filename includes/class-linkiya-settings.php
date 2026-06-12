@@ -39,7 +39,7 @@ class Linkiya_Settings {
     public static function register_menu(): void {
         add_menu_page(
             __( 'Linkiya', 'linkiya' ),
-            __( 'Internal Linker', 'linkiya' ),
+            __( 'Linkiya', 'linkiya' ),
             'manage_options',
             'linkiya',
             [ __CLASS__, 'render_page' ],
