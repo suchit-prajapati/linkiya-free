@@ -118,6 +118,12 @@ class Linkiya_Settings {
             exit;
         }
 
+        // Reject files larger than 1 MB to prevent memory exhaustion.
+        if ( $file['size'] > 1024 * 1024 ) {
+            wp_safe_redirect( add_query_arg( [ 'page' => 'linkiya', 'import_error' => '1' ], admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
         require_once ABSPATH . 'wp-admin/includes/file.php';
         $creds = request_filesystem_credentials( '', '', false, false, null );
         if ( ! WP_Filesystem( $creds ) ) {
@@ -138,11 +144,16 @@ class Linkiya_Settings {
             exit;
         }
 
-        $defaults = self::get_defaults();
-        $clean    = [];
-        foreach ( $defaults as $key => $default ) {
-            $clean[ $key ] = $decoded[ $key ] ?? $default;
-        }
+        // Re-use the same validation logic as handle_save() so types are enforced.
+        $clean = [
+            'min_word_length'    => absint( $decoded['min_word_length'] ?? 4 ),
+            'max_links_per_post' => absint( $decoded['max_links_per_post'] ?? 5 ),
+            'link_target'        => in_array( $decoded['link_target'] ?? '', [ '_self', '_blank' ], true )
+                                        ? $decoded['link_target']
+                                        : '_self',
+            'link_rel'           => sanitize_text_field( $decoded['link_rel'] ?? '' ),
+            'excluded_post_ids'  => sanitize_textarea_field( $decoded['excluded_post_ids'] ?? '' ),
+        ];
         $clean = apply_filters( 'linkiya_import_settings', $clean, $decoded );
 
         update_option( self::OPTION_KEY, $clean );

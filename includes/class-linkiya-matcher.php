@@ -146,7 +146,7 @@ class Linkiya_Matcher {
         }
         // Allow Pro plugin to add extra link attributes (e.g. click tracking)
         $attrs = apply_filters( 'linkiya_link_attrs', $attrs, $url );
-        $attrs = wp_kses( '<a ' . $attrs . '>', [ 'a' => array_fill_keys( [ 'href', 'title', 'target', 'rel', 'class', 'id', 'data-*' ], true ) ] );
+        $attrs = wp_kses( '<a ' . $attrs . '>', [ 'a' => array_fill_keys( [ 'href', 'title', 'target', 'rel', 'class', 'id' ], true ) ] );
         $attrs = trim( preg_replace( '/^<a\s*/i', '', rtrim( $attrs, '>' ) ) );
 
         $result = '';
