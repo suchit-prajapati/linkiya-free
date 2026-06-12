@@ -120,7 +120,7 @@
     <hr>
     <div class="linkiya-pro-card">
         <h2><?php esc_html_e( 'Unlock Linkiya Pro', 'linkiya' ); ?></h2>
-        <p><?php esc_html_e( 'Get the full power of Linkiya with 21 Pro features:', 'linkiya' ); ?></p>
+        <p><?php esc_html_e( 'Get the full power of Linkiya with 22 Pro features:', 'linkiya' ); ?></p>
         <ul>
             <li><?php esc_html_e( 'Bulk linking across your entire site', 'linkiya' ); ?></li>
             <li><?php esc_html_e( 'Link report dashboard', 'linkiya' ); ?></li>
@@ -131,6 +131,7 @@
             <li><?php esc_html_e( 'Inbound link analysis', 'linkiya' ); ?></li>
             <li><?php esc_html_e( 'Click analytics and reporting', 'linkiya' ); ?></li>
             <li><?php esc_html_e( 'Link intent analysis (AI-powered)', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'AI suggestions — semantic, context-aware links via Claude or OpenAI', 'linkiya' ); ?></li>
         </ul>
         <a href="https://www.mypluginstore.com/linkiya" target="_blank" rel="noopener noreferrer"
             class="button button-primary button-large">
