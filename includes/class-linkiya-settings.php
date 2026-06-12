@@ -100,9 +100,12 @@ class Linkiya_Settings {
         $data = self::get();
         $data = apply_filters( 'linkiya_export_settings', $data );
 
-        header( 'Content-Type: application/json' );
+        header( 'Content-Type: application/json; charset=utf-8' );
         header( 'Content-Disposition: attachment; filename="linkiya-settings-' . wp_date( 'Y-m-d' ) . '.json"' );
-        echo wp_json_encode( $data, JSON_PRETTY_PRINT );
+        $encoded = wp_json_encode( $data, JSON_PRETTY_PRINT );
+        if ( false !== $encoded ) {
+            echo $encoded; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        }
         exit;
     }
 

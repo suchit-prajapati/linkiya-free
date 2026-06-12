@@ -38,6 +38,9 @@ class Linkiya_Matcher {
         $matched_post_ids = []; // O(1) set: post_id => true
 
         foreach ( $keyword_map as $entry ) {
+            if ( empty( $entry['post_id'] ) || empty( $entry['keywords'] ) || ! is_array( $entry['keywords'] ) ) {
+                continue;
+            }
             $entry_id = (int) $entry['post_id'];
 
             if ( $entry_id > 0 && isset( $matched_post_ids[ $entry_id ] ) ) {

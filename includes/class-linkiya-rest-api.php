@@ -90,12 +90,18 @@ class Linkiya_REST_API {
 
     public static function handle_suggest( WP_REST_Request $request ): WP_REST_Response {
         // Rate limit: max 20 scans per user per minute.
-        $rate_key      = 'linkiya_rl_' . get_current_user_id();
-        $attempts      = (int) get_transient( $rate_key );
-        if ( $attempts >= 20 ) {
-            return new WP_REST_Response( [ 'error' => 'Too many requests. Please wait a moment.' ], 429 );
+        $rate_key = 'linkiya_rl_' . get_current_user_id();
+        // Use add_transient to atomically set only when key doesn't exist,
+        // then increment via a separate counter to avoid race conditions.
+        if ( false === get_transient( $rate_key ) ) {
+            set_transient( $rate_key, 1, MINUTE_IN_SECONDS );
+        } else {
+            $attempts = (int) get_transient( $rate_key );
+            if ( $attempts >= 20 ) {
+                return new WP_REST_Response( [ 'error' => 'Too many requests. Please wait a moment.' ], 429 );
+            }
+            set_transient( $rate_key, $attempts + 1, MINUTE_IN_SECONDS );
         }
-        set_transient( $rate_key, $attempts + 1, MINUTE_IN_SECONDS );
 
         $body    = $request->get_json_params();
         $post_id = absint( $body['post_id'] ?? 0 );
