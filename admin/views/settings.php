@@ -2,15 +2,15 @@
 <div class="wrap">
     <h1>⚙️ <?php esc_html_e( 'Linkiya — Settings', 'linkiya' ); ?></h1>
 
-    <?php if ( ! empty( $_GET['saved'] ) ) : ?>
+    <?php if ( isset( $_GET['saved'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['saved'] ) ) ) : ?>
     <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'linkiya' ); ?></p></div>
     <?php endif; ?>
 
-    <?php if ( ! empty( $_GET['imported'] ) ) : ?>
+    <?php if ( isset( $_GET['imported'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['imported'] ) ) ) : ?>
     <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings imported successfully.', 'linkiya' ); ?></p></div>
     <?php endif; ?>
 
-    <?php if ( ! empty( $_GET['import_error'] ) ) : ?>
+    <?php if ( isset( $_GET['import_error'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['import_error'] ) ) ) : ?>
     <div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Import failed. Please upload a valid JSON file.', 'linkiya' ); ?></p></div>
     <?php endif; ?>
 
@@ -107,34 +107,34 @@
     <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=linkiya_export_settings' ), 'linkiya_export_settings' ) ); ?>"
         class="button"><?php esc_html_e( 'Download Settings JSON', 'linkiya' ); ?></a>
 
-    <h2 style="margin-top:24px"><?php esc_html_e( 'Import Settings', 'linkiya' ); ?></h2>
+    <h2 class="linkiya-section-heading"><?php esc_html_e( 'Import Settings', 'linkiya' ); ?></h2>
     <p><?php esc_html_e( 'Upload a previously exported settings JSON file.', 'linkiya' ); ?></p>
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
         <?php wp_nonce_field( 'linkiya_import_settings' ); ?>
         <input type="hidden" name="action" value="linkiya_import_settings">
-        <input type="file" name="linkiya_import_file" accept=".json" required style="margin-bottom:12px;display:block">
+        <input type="file" name="linkiya_import_file" accept=".json" required class="linkiya-import-file">
         <?php submit_button( __( 'Import Settings', 'linkiya' ), 'secondary', 'submit', false ); ?>
     </form>
 
     <!-- Upgrade to Pro card -->
     <hr>
-    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:24px;max-width:600px;margin-top:24px">
-        <h2 style="margin-top:0">⭐ <?php esc_html_e( 'Unlock Linkiya Pro', 'linkiya' ); ?></h2>
-        <p style="color:#6b7280"><?php esc_html_e( 'Get the full power of Linkiya with 21 Pro features:', 'linkiya' ); ?></p>
-        <ul style="color:#374151;line-height:2;padding-left:20px">
-            <li><?php esc_html_e( '🔁 Bulk linking across your entire site', 'linkiya' ); ?></li>
-            <li><?php esc_html_e( '📊 Link report dashboard', 'linkiya' ); ?></li>
-            <li><?php esc_html_e( '🔴 Broken link scanner with auto-fix', 'linkiya' ); ?></li>
-            <li><?php esc_html_e( '🏚 Orphan post detection', 'linkiya' ); ?></li>
-            <li><?php esc_html_e( '📋 Custom post type support', 'linkiya' ); ?></li>
-            <li><?php esc_html_e( '🗂 Same-category filtering', 'linkiya' ); ?></li>
-            <li><?php esc_html_e( '🔍 Inbound link analysis', 'linkiya' ); ?></li>
-            <li><?php esc_html_e( '📈 Click analytics & reporting', 'linkiya' ); ?></li>
-            <li><?php esc_html_e( '🎯 Link intent analysis (AI-powered)', 'linkiya' ); ?></li>
+    <div class="linkiya-pro-card">
+        <h2><?php esc_html_e( 'Unlock Linkiya Pro', 'linkiya' ); ?></h2>
+        <p><?php esc_html_e( 'Get the full power of Linkiya with 21 Pro features:', 'linkiya' ); ?></p>
+        <ul>
+            <li><?php esc_html_e( 'Bulk linking across your entire site', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'Link report dashboard', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'Broken link scanner with auto-fix', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'Orphan post detection', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'Custom post type support', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'Same-category filtering', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'Inbound link analysis', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'Click analytics and reporting', 'linkiya' ); ?></li>
+            <li><?php esc_html_e( 'Link intent analysis (AI-powered)', 'linkiya' ); ?></li>
         </ul>
         <a href="https://www.mypluginstore.com/linkiya" target="_blank" rel="noopener noreferrer"
-            class="button button-primary button-large" style="margin-top:8px">
-            <?php esc_html_e( 'Get Linkiya Pro →', 'linkiya' ); ?>
+            class="button button-primary button-large">
+            <?php esc_html_e( 'Get Linkiya Pro', 'linkiya' ); ?>
         </a>
     </div>
 </div>

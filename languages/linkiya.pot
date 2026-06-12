@@ -1,0 +1,182 @@
+# Copyright (C) 2024 My Plugin Store Team
+# This file is distributed under the GPL-2.0+ license.
+msgid ""
+msgstr ""
+"Project-Id-Version: Linkiya 1.0.0\n"
+"Report-Msgid-Bugs-To: https://www.mypluginstore.com/linkiya\n"
+"POT-Creation-Date: 2024-01-01 00:00:00+00:00\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"X-Generator: WP-CLI 2.x\n"
+"X-Domain: linkiya\n"
+
+#: admin/views/settings.php:3
+msgid "Linkiya — Settings"
+msgstr ""
+
+#: admin/views/settings.php:6
+msgid "Settings saved."
+msgstr ""
+
+#: admin/views/settings.php:10
+msgid "Settings imported successfully."
+msgstr ""
+
+#: admin/views/settings.php:14
+msgid "Import failed. Please upload a valid JSON file."
+msgstr ""
+
+#: admin/views/settings.php:26
+msgid "Minimum Word Length"
+msgstr ""
+
+#: admin/views/settings.php:33
+msgid "Keywords shorter than this are ignored. Default: 4."
+msgstr ""
+
+#: admin/views/settings.php:40
+msgid "Max Links Per Post"
+msgstr ""
+
+#: admin/views/settings.php:47
+msgid "Maximum suggestions per scan. 0 = unlimited."
+msgstr ""
+
+#: admin/views/settings.php:54
+msgid "Link Target"
+msgstr ""
+
+#: admin/views/settings.php:58
+msgid "Same tab (_self)"
+msgstr ""
+
+#: admin/views/settings.php:59
+msgid "New tab (_blank)"
+msgstr ""
+
+#: admin/views/settings.php:67
+msgid "Link Rel"
+msgstr ""
+
+#: admin/views/settings.php:74
+msgid "e.g. noopener noreferrer"
+msgstr ""
+
+#: admin/views/settings.php:75
+msgid "Leave blank for standard internal links."
+msgstr ""
+
+#: admin/views/settings.php:82
+msgid "Exclude Posts"
+msgstr ""
+
+#: admin/views/settings.php:89
+msgid "Post IDs added here will never be linked to. One ID per line."
+msgstr ""
+
+#: admin/views/settings.php:100
+msgid "Save Settings"
+msgstr ""
+
+#: admin/views/settings.php:105
+msgid "Export Settings"
+msgstr ""
+
+#: admin/views/settings.php:106
+msgid "Download your current settings as a JSON file."
+msgstr ""
+
+#: admin/views/settings.php:108
+msgid "Download Settings JSON"
+msgstr ""
+
+#: admin/views/settings.php:110
+msgid "Import Settings"
+msgstr ""
+
+#: admin/views/settings.php:111
+msgid "Upload a previously exported settings JSON file."
+msgstr ""
+
+#: admin/views/settings.php:116
+msgid "Import Settings"
+msgstr ""
+
+#: admin/views/settings.php:121
+msgid "Unlock Linkiya Pro"
+msgstr ""
+
+#: admin/views/settings.php:122
+msgid "Get the full power of Linkiya with 21 Pro features:"
+msgstr ""
+
+#: admin/views/settings.php:124
+msgid "Bulk linking across your entire site"
+msgstr ""
+
+#: admin/views/settings.php:125
+msgid "Link report dashboard"
+msgstr ""
+
+#: admin/views/settings.php:126
+msgid "Broken link scanner with auto-fix"
+msgstr ""
+
+#: admin/views/settings.php:127
+msgid "Orphan post detection"
+msgstr ""
+
+#: admin/views/settings.php:128
+msgid "Custom post type support"
+msgstr ""
+
+#: admin/views/settings.php:129
+msgid "Same-category filtering"
+msgstr ""
+
+#: admin/views/settings.php:130
+msgid "Inbound link analysis"
+msgstr ""
+
+#: admin/views/settings.php:131
+msgid "Click analytics and reporting"
+msgstr ""
+
+#: admin/views/settings.php:132
+msgid "Link intent analysis (AI-powered)"
+msgstr ""
+
+#: admin/views/settings.php:134
+msgid "Get Linkiya Pro"
+msgstr ""
+
+#: includes/class-linkiya-settings.php:71
+msgid "Unauthorized"
+msgstr ""
+
+#: includes/class-linkiya-settings.php:98
+msgid "Unauthorized"
+msgstr ""
+
+#: includes/class-linkiya-settings.php:113
+msgid "Unauthorized"
+msgstr ""
+
+#: includes/class-linkiya-settings.php:41
+msgid "Linkiya"
+msgstr ""
+
+#: includes/class-linkiya-settings.php:42
+msgid "Internal Linker"
+msgstr ""
+
+#: includes/class-linkiya-settings.php:51
+#: includes/class-linkiya-settings.php:53
+msgid "Settings"
+msgstr ""

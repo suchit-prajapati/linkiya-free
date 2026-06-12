@@ -41,11 +41,6 @@ class Linkiya_Matcher {
             $entry_id = (int) $entry['post_id'];
 
             if ( $entry_id > 0 && in_array( $entry_id, $matched_post_ids, true ) ) {
-                // Already have a suggestion for this post
-                continue;
-            }
-            if ( $entry_id < 0 && in_array( $entry_id, $matched_post_ids, true ) ) {
-                // Already have a suggestion for this taxonomy term
                 continue;
             }
 
@@ -142,7 +137,7 @@ class Linkiya_Matcher {
         $parts   = preg_split( $pattern, $content, -1, PREG_SPLIT_DELIM_CAPTURE );
 
         // Build the <a> tag with optional target and rel
-        $attrs  = 'href="' . $url . '" title="' . $title . '"';
+        $attrs  = 'href="' . esc_attr( $url ) . '" title="' . esc_attr( $title ) . '"';
         if ( $target && $target !== '_self' ) {
             $attrs .= ' target="' . esc_attr( $target ) . '"';
         }

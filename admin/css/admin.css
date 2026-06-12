@@ -1,4 +1,4 @@
-/* Smart Internal Linker — Admin Styles */
+/* Linkiya — Admin Styles */
 
 .sil-admin h1 { margin-bottom: 20px; }
 .sil-admin h2 { font-size: 16px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb; }
@@ -81,6 +81,15 @@
 
 .sil-log { max-height: 300px; overflow-y: auto; font-size: 12px; }
 .sil-log-entry { padding: 6px 0; border-bottom: 1px solid #f3f4f6; color: #374151; }
+
+/* Settings page */
+.linkiya-import-file { margin-bottom: 12px; display: block; }
+.linkiya-pro-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; max-width: 600px; margin-top: 24px; }
+.linkiya-pro-card h2 { margin-top: 0; }
+.linkiya-pro-card p { color: #6b7280; }
+.linkiya-pro-card ul { color: #374151; line-height: 2; padding-left: 20px; }
+.linkiya-pro-card .button { margin-top: 8px; }
+.linkiya-section-heading { margin-top: 24px; }
 
 /* License page */
 .sil-card__icon { font-size: 40px; margin-bottom: 12px; }

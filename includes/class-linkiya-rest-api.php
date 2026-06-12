@@ -139,7 +139,7 @@ class Linkiya_REST_API {
         $body     = $request->get_json_params();
         $post_id  = absint( $body['post_id'] ?? 0 );
         $content  = wp_kses_post( $body['content'] ?? '' );
-        $accepted = $body['accepted'] ?? [];
+        $accepted = is_array( $body['accepted'] ?? null ) ? $body['accepted'] : [];
 
         if ( ! $post_id ) {
             return new WP_REST_Response( [ 'error' => 'Invalid post_id.' ], 400 );
@@ -160,7 +160,7 @@ class Linkiya_REST_API {
             if ( empty( $item['keyword'] ) || empty( $item['url'] ) ) continue;
             $sanitized[] = [
                 'keyword'    => sanitize_text_field( $item['keyword'] ),
-                'anchor'     => sanitize_text_field( $item['anchor'] ?? $item['keyword'] ),
+                'anchor'     => sanitize_text_field( $item['anchor'] ?? $item['keyword'] ?? '' ),
                 'post_id'    => absint( $item['post_id'] ?? 0 ),
                 'post_title' => sanitize_text_field( $item['post_title'] ?? '' ),
                 'url'        => esc_url_raw( $item['url'] ),

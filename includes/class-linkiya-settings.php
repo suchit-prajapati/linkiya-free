@@ -101,7 +101,7 @@ class Linkiya_Settings {
         $data = apply_filters( 'linkiya_export_settings', $data );
 
         header( 'Content-Type: application/json' );
-        header( 'Content-Disposition: attachment; filename="linkiya-settings-' . date( 'Y-m-d' ) . '.json"' );
+        header( 'Content-Disposition: attachment; filename="linkiya-settings-' . wp_date( 'Y-m-d' ) . '.json"' );
         echo wp_json_encode( $data, JSON_PRETTY_PRINT );
         exit;
     }
@@ -118,7 +118,15 @@ class Linkiya_Settings {
             exit;
         }
 
-        $json    = file_get_contents( $file['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        WP_Filesystem();
+        global $wp_filesystem;
+        $json = $wp_filesystem->get_contents( $file['tmp_name'] );
+        if ( false === $json ) {
+            wp_safe_redirect( add_query_arg( [ 'page' => 'linkiya', 'import_error' => '1' ], admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
         $decoded = json_decode( $json, true );
 
         if ( ! is_array( $decoded ) ) {

@@ -144,7 +144,8 @@ class Linkiya_Keyword_Extractor {
 
         $keywords = $valid;
 
-        for ( $i = 0; $i < count( $tokens ) - 1; $i++ ) {
+        $token_count = count( $tokens );
+        for ( $i = 0; $i < $token_count - 1; $i++ ) {
             $a = $tokens[ $i ];
             $b = $tokens[ $i + 1 ];
             if (

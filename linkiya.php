@@ -39,6 +39,9 @@ add_action( 'plugins_loaded', function () {
 } );
 
 register_activation_hook( LINKIYA_PLUGIN_FILE, function () {
-    // Allow Pro plugin to create its tables on activation
     do_action( 'linkiya_activate' );
+} );
+
+register_deactivation_hook( LINKIYA_PLUGIN_FILE, function () {
+    do_action( 'linkiya_deactivate' );
 } );
