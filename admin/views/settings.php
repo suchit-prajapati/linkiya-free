@@ -120,7 +120,7 @@
     <hr>
     <div class="linkiya-pro-card">
         <h2><?php esc_html_e( 'Unlock Linkiya Pro', 'linkiya' ); ?></h2>
-        <p><?php esc_html_e( 'Get the full power of Linkiya with 22 Pro features:', 'linkiya' ); ?></p>
+        <p><?php esc_html_e( 'Get the full power of Linkiya with Pro features:', 'linkiya' ); ?></p>
         <ul>
             <li><?php esc_html_e( 'Bulk linking across your entire site', 'linkiya' ); ?></li>
             <li><?php esc_html_e( 'Link report dashboard', 'linkiya' ); ?></li>
