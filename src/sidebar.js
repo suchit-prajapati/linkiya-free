@@ -17,11 +17,13 @@ const ICON = (
 
 const STATUS = { IDLE:'idle', LOADING:'loading', DONE:'done', APPLYING:'applying', APPLIED:'applied', ERROR:'error' };
 
-// Build absolute admin URL (works regardless of WP install path)
 const adminUrl = ( page ) => {
     const base = linkiyaData.adminUrl || '/wp-admin/';
     return base + 'admin.php?page=' + page;
 };
+
+// Unique key per suggestion — keyword suggestions use keyword, AI suggestions use "ai:{post_id}"
+const suggKey = ( s ) => s.source === 'ai' ? `ai:${ s.post_id }` : s.keyword;
 
 function SmartInternalLinkerSidebar() {
     const { postId, currentContent } = useSelect( ( select ) => ( {
@@ -30,7 +32,10 @@ function SmartInternalLinkerSidebar() {
     } ) );
     const { editPost } = useDispatch( 'core/editor' );
 
-    const isPro = linkiyaData.isPro;
+    const isPro              = linkiyaData.isPro;
+    const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
+    const aiNonce            = linkiyaData.ai_suggest_nonce || '';
+    const aiUrl              = linkiyaData.ai_suggest_url  || '';
 
     const [status,        setStatus]        = useState( STATUS.IDLE );
     const [suggestions,   setSuggestions]   = useState( [] );
@@ -40,11 +45,41 @@ function SmartInternalLinkerSidebar() {
     const [errorMsg,      setErrorMsg]      = useState( '' );
     const [appliedCount,  setAppliedCount]  = useState( 0 );
     const [orphanCount,   setOrphanCount]   = useState( null );
+    const [aiLoading,     setAiLoading]     = useState( false );
 
-    // Orphan count teaser — only available in Pro
-    // useEffect omitted in free version; Pro plugin overrides sidebar via linkiya_sidebar_data filter
+    /* ── Keyword scan ─────────────────────────────────────────────── */
 
-    /* ── Run analysis ─────────────────────────────────────────────── */
+    const fetchKeywordSuggestions = async () => {
+        const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
+            body: JSON.stringify( { post_id: postId, content: currentContent } ),
+        } );
+        const data = await res.json();
+        if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Server error', 'linkiya' ) );
+        if ( data.blacklisted ) throw Object.assign( new Error( data.message || __( 'This post is blacklisted from linking.', 'linkiya' ) ), { blacklisted: true } );
+        return data.suggestions || [];
+    };
+
+    /* ── AI scan ──────────────────────────────────────────────────── */
+
+    const fetchAiSuggestions = async () => {
+        if ( ! aiEnabled || ! aiNonce || ! aiUrl ) return [];
+
+        const formData = new FormData();
+        formData.append( 'action',   'linkiya_ai_suggest' );
+        formData.append( 'nonce',    aiNonce );
+        formData.append( 'post_id',  postId );
+        formData.append( 'content',  currentContent );
+
+        const res  = await fetch( aiUrl, { method: 'POST', body: formData } );
+        const data = await res.json();
+
+        if ( ! data.success ) return []; // AI failure is non-fatal — just return empty
+        return ( data.data || [] ).map( s => ( { ...s, source: 'ai' } ) );
+    };
+
+    /* ── Run analysis (keyword + AI in parallel) ──────────────────── */
 
     const runAnalysis = async () => {
         setStatus( STATUS.LOADING );
@@ -53,35 +88,38 @@ function SmartInternalLinkerSidebar() {
         setAnchorTexts( {} );
         setEditingAnchor( {} );
         setErrorMsg( '' );
+        setAiLoading( aiEnabled );
 
         try {
-            const res = await fetch( `${linkiyaData.restUrl}/suggest`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-                body: JSON.stringify( { post_id: postId, content: currentContent } ),
-            } );
-            const data = await res.json();
-            if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Server error', 'linkiya' ) );
+            // Run both in parallel — AI failure won't block keyword results
+            const [ keywordSuggs, aiSuggs ] = await Promise.all( [
+                fetchKeywordSuggestions(),
+                fetchAiSuggestions().catch( () => [] ),
+            ] );
 
-            if ( data.blacklisted ) {
-                setErrorMsg( data.message || __( 'This post is blacklisted from linking.', 'linkiya' ) );
-                setStatus( STATUS.ERROR );
-                return;
-            }
+            setAiLoading( false );
 
-            const suggs = data.suggestions || [];
-            setSuggestions( suggs );
+            // Deduplicate: if AI suggests a post already covered by keyword match, drop the AI entry
+            const keywordPostIds = new Set( keywordSuggs.map( s => s.post_id ) );
+            const filteredAi     = aiSuggs.filter( s => ! keywordPostIds.has( s.post_id ) );
+
+            // Keyword suggestions first, AI suggestions after
+            const merged = [ ...keywordSuggs, ...filteredAi ];
+
+            setSuggestions( merged );
 
             const defaultChecked = {};
             const defaultAnchors = {};
-            suggs.forEach( s => {
-                defaultChecked[ s.keyword ] = true;
-                defaultAnchors[ s.keyword ] = s.keyword;
+            merged.forEach( s => {
+                const key = suggKey( s );
+                defaultChecked[ key ] = true;
+                defaultAnchors[ key ] = s.anchor || s.keyword;
             } );
             setChecked( defaultChecked );
             setAnchorTexts( defaultAnchors );
             setStatus( STATUS.DONE );
         } catch ( err ) {
+            setAiLoading( false );
             setErrorMsg( err.message );
             setStatus( STATUS.ERROR );
         }
@@ -91,14 +129,14 @@ function SmartInternalLinkerSidebar() {
 
     const applyLinks = async () => {
         const accepted = suggestions
-            .filter( s => checked[ s.keyword ] )
-            .map( s => ( { ...s, anchor: anchorTexts[ s.keyword ] || s.keyword } ) );
+            .filter( s => checked[ suggKey( s ) ] )
+            .map( s => ( { ...s, anchor: anchorTexts[ suggKey( s ) ] || s.anchor || s.keyword } ) );
 
         if ( ! accepted.length ) return;
         setStatus( STATUS.APPLYING );
 
         try {
-            const res = await fetch( `${linkiyaData.restUrl}/apply`, {
+            const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
                 body: JSON.stringify( { post_id: postId, content: currentContent, accepted } ),
@@ -119,14 +157,17 @@ function SmartInternalLinkerSidebar() {
 
     const toggleAll = val => {
         const next = {};
-        suggestions.forEach( s => ( next[ s.keyword ] = val ) );
+        suggestions.forEach( s => ( next[ suggKey( s ) ] = val ) );
         setChecked( next );
     };
 
-    const toggleAnchorEdit = keyword =>
-        setEditingAnchor( prev => ( { ...prev, [keyword]: ! prev[keyword] } ) );
+    const toggleAnchorEdit = key =>
+        setEditingAnchor( prev => ( { ...prev, [key]: ! prev[key] } ) );
 
     const selectedCount = Object.values( checked ).filter( Boolean ).length;
+
+    const keywordCount = suggestions.filter( s => s.source !== 'ai' ).length;
+    const aiCount      = suggestions.filter( s => s.source === 'ai' ).length;
 
     /* ── Render ───────────────────────────────────────────────────── */
 
@@ -160,6 +201,11 @@ function SmartInternalLinkerSidebar() {
                     <PanelRow>
                         <p className="linkiya-intro">
                             { __( 'Scan content for keywords found in published posts and apply internal links.', 'linkiya' ) }
+                            { aiEnabled && (
+                                <span className="linkiya-ai-active-note">
+                                    { ' ' }🤖 { __( 'AI suggestions active', 'linkiya' ) }
+                                </span>
+                            ) }
                         </p>
                     </PanelRow>
 
@@ -175,10 +221,7 @@ function SmartInternalLinkerSidebar() {
                                     target="_blank"
                                     rel="noreferrer"
                                 >
-                                    { isPro
-                                        ? __( 'Fix them →', 'linkiya' )
-                                        : __( 'Upgrade to Pro →', 'linkiya' )
-                                    }
+                                    { isPro ? __( 'Fix them →', 'linkiya' ) : __( 'Upgrade to Pro →', 'linkiya' ) }
                                 </a>
                             </div>
                         </PanelRow>
@@ -197,7 +240,12 @@ function SmartInternalLinkerSidebar() {
                         <PanelRow>
                             <div className="linkiya-loading">
                                 <Spinner />
-                                <span>{ __( 'Analysing content…', 'linkiya' ) }</span>
+                                <span>
+                                    { aiLoading
+                                        ? __( 'Analysing content + fetching AI suggestions…', 'linkiya' )
+                                        : __( 'Analysing content…', 'linkiya' )
+                                    }
+                                </span>
                             </div>
                         </PanelRow>
                     ) }
@@ -236,6 +284,11 @@ function SmartInternalLinkerSidebar() {
                                         <div className="linkiya-summary">
                                             <span className="linkiya-badge">{ suggestions.length }</span>
                                             { ' ' + __( 'opportunities found', 'linkiya' ) }
+                                            { aiCount > 0 && (
+                                                <span className="linkiya-ai-summary-badge">
+                                                    🤖 { aiCount } { __( 'AI', 'linkiya' ) }
+                                                </span>
+                                            ) }
                                         </div>
                                     </PanelRow>
                                     <PanelRow>
@@ -251,52 +304,69 @@ function SmartInternalLinkerSidebar() {
                                     </PanelRow>
 
                                     <div className="linkiya-suggestions-list">
-                                        { suggestions.map( s => (
-                                            <div key={ s.keyword } className="linkiya-suggestion-row">
-                                                <div className="linkiya-suggestion-main">
-                                                    <CheckboxControl
-                                                        checked={ !! checked[ s.keyword ] }
-                                                        onChange={ val => setChecked( prev => ( { ...prev, [ s.keyword ]: val } ) ) }
-                                                        label={
-                                                            <span className="linkiya-suggestion-label">
-                                                                <span className="linkiya-keyword">
-                                                                    { anchorTexts[ s.keyword ] || s.keyword }
+                                        { suggestions.map( s => {
+                                            const key   = suggKey( s );
+                                            const isAi  = s.source === 'ai';
+                                            return (
+                                                <div key={ key } className={ `linkiya-suggestion-row${ isAi ? ' linkiya-suggestion-row--ai' : '' }` }>
+                                                    <div className="linkiya-suggestion-main">
+                                                        <CheckboxControl
+                                                            checked={ !! checked[ key ] }
+                                                            onChange={ val => setChecked( prev => ( { ...prev, [ key ]: val } ) ) }
+                                                            label={
+                                                                <span className="linkiya-suggestion-label">
+                                                                    <span className="linkiya-keyword">
+                                                                        { anchorTexts[ key ] || s.anchor || s.keyword }
+                                                                    </span>
+                                                                    <span className="linkiya-arrow">→</span>
+                                                                    <span className="linkiya-post-title" title={ s.post_title }>
+                                                                        { s.post_title.length > 32
+                                                                            ? s.post_title.substring( 0, 32 ) + '…'
+                                                                            : s.post_title }
+                                                                    </span>
+                                                                    { s.post_type && s.post_type !== 'post' && s.post_type !== 'page' && (
+                                                                        <span className="linkiya-cpt-badge">{ s.post_type }</span>
+                                                                    ) }
+                                                                    { isAi && (
+                                                                        <span
+                                                                            className="linkiya-ai-badge"
+                                                                            title={ s.reason || __( 'AI-powered suggestion', 'linkiya' ) }
+                                                                        >
+                                                                            🤖 { __( 'AI', 'linkiya' ) }
+                                                                        </span>
+                                                                    ) }
                                                                 </span>
-                                                                <span className="linkiya-arrow">→</span>
-                                                                <span className="linkiya-post-title" title={ s.post_title }>
-                                                                    { s.post_title.length > 32
-                                                                        ? s.post_title.substring( 0, 32 ) + '…'
-                                                                        : s.post_title }
-                                                                </span>
-                                                                { s.post_type && s.post_type !== 'post' && s.post_type !== 'page' && (
-                                                                    <span className="linkiya-cpt-badge">{ s.post_type }</span>
-                                                                ) }
-                                                            </span>
-                                                        }
-                                                    />
-                                                    { /* Anchor text edit toggle */ }
-                                                    <button
-                                                        className={ `linkiya-edit-anchor-btn${ editingAnchor[ s.keyword ] ? ' active' : '' }` }
-                                                        onClick={ () => toggleAnchorEdit( s.keyword ) }
-                                                        title={ __( 'Edit anchor text', 'linkiya' ) }
-                                                        type="button"
-                                                    >✏️</button>
-                                                </div>
-
-                                                { /* Anchor text edit field */ }
-                                                { editingAnchor[ s.keyword ] && (
-                                                    <div className="linkiya-anchor-edit">
-                                                        <TextControl
-                                                            label={ __( 'Anchor text', 'linkiya' ) }
-                                                            value={ anchorTexts[ s.keyword ] || s.keyword }
-                                                            onChange={ val => setAnchorTexts( prev => ( { ...prev, [s.keyword]: val } ) ) }
-                                                            placeholder={ s.keyword }
-                                                            help={ __( 'This text will be used as the link anchor.', 'linkiya' ) }
+                                                            }
                                                         />
+                                                        <button
+                                                            className={ `linkiya-edit-anchor-btn${ editingAnchor[ key ] ? ' active' : '' }` }
+                                                            onClick={ () => toggleAnchorEdit( key ) }
+                                                            title={ __( 'Edit anchor text', 'linkiya' ) }
+                                                            type="button"
+                                                        >✏️</button>
                                                     </div>
-                                                ) }
-                                            </div>
-                                        ) ) }
+
+                                                    { /* AI reason tooltip */ }
+                                                    { isAi && s.reason && (
+                                                        <div className="linkiya-ai-reason">
+                                                            💡 { s.reason }
+                                                        </div>
+                                                    ) }
+
+                                                    { editingAnchor[ key ] && (
+                                                        <div className="linkiya-anchor-edit">
+                                                            <TextControl
+                                                                label={ __( 'Anchor text', 'linkiya' ) }
+                                                                value={ anchorTexts[ key ] || s.anchor || s.keyword }
+                                                                onChange={ val => setAnchorTexts( prev => ( { ...prev, [key]: val } ) ) }
+                                                                placeholder={ s.anchor || s.keyword }
+                                                                help={ __( 'This text will be used as the link anchor.', 'linkiya' ) }
+                                                            />
+                                                        </div>
+                                                    ) }
+                                                </div>
+                                            );
+                                        } ) }
                                     </div>
 
                                     <PanelRow>
@@ -311,9 +381,10 @@ function SmartInternalLinkerSidebar() {
                                                 { status === STATUS.APPLYING
                                                     ? __( 'Applying…', 'linkiya' )
                                                     : sprintf(
-                                            _n( 'Apply %d Link', 'Apply %d Links', selectedCount, 'linkiya' ),
-                                            selectedCount
-                                        ) }
+                                                        _n( 'Apply %d Link', 'Apply %d Links', selectedCount, 'linkiya' ),
+                                                        selectedCount
+                                                    )
+                                                }
                                             </Button>
                                             <Button
                                                 variant="secondary"
