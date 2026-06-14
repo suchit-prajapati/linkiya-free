@@ -116,8 +116,35 @@
         <?php submit_button( __( 'Import Settings', 'linkiya' ), 'secondary', 'submit', false ); ?>
     </form>
 
-    <!-- Upgrade to Pro card -->
+    <!-- Pro status / upsell card -->
     <hr>
+    <?php
+    $pro_is_active = class_exists( 'Linkiya_License' ) && Linkiya_License::is_active();
+    if ( $pro_is_active ) : ?>
+    <div class="linkiya-pro-card" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:28px 32px;">
+        <h2 style="color:#15803d;margin-top:0">🎉 <?php esc_html_e( 'Linkiya Pro is Active!', 'linkiya' ); ?></h2>
+        <ul style="margin-bottom:20px">
+            <?php $features = [
+                'Bulk linking across your entire site',
+                'Link report dashboard',
+                'Broken link scanner with auto-fix',
+                'Orphan post detection',
+                'Custom post type support',
+                'Same-category filtering',
+                'Inbound link analysis',
+                'Click analytics and reporting',
+                'Link intent analysis (AI-powered)',
+                'AI suggestions — semantic, context-aware links via Claude or OpenAI',
+            ];
+            foreach ( $features as $feature ) : ?>
+            <li>✅ <?php echo esc_html( $feature ); ?></li>
+            <?php endforeach; ?>
+        </ul>
+        <div style="background:#dcfce7;border-radius:8px;padding:14px 20px;display:inline-block;font-size:15px;font-weight:600;color:#166534;">
+            🚀 <?php esc_html_e( 'Hurray! You have activated Linkiya Pro. All features are unlocked.', 'linkiya' ); ?>
+        </div>
+    </div>
+    <?php else : ?>
     <div class="linkiya-pro-card">
         <h2><?php esc_html_e( 'Unlock Linkiya Pro', 'linkiya' ); ?></h2>
         <p><?php esc_html_e( 'Get the full power of Linkiya with Pro features:', 'linkiya' ); ?></p>
@@ -138,4 +165,5 @@
             <?php esc_html_e( 'Get Linkiya Pro', 'linkiya' ); ?>
         </a>
     </div>
+    <?php endif; ?>
 </div>
