@@ -70,20 +70,20 @@ class Linkiya_Settings {
         check_admin_referer( 'linkiya_settings_nonce' );
         if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
 
-        $input = isset( $_POST['linkiya_settings'] ) ? wp_unslash( $_POST['linkiya_settings'] ) : [];
+        $raw   = isset( $_POST['linkiya_settings'] ) ? wp_unslash( $_POST['linkiya_settings'] ) : [];
 
         $clean = [
-            'min_word_length'    => absint( $input['min_word_length'] ?? 4 ),
-            'max_links_per_post' => absint( $input['max_links_per_post'] ?? 5 ),
-            'link_target'        => in_array( $input['link_target'] ?? '', [ '_self', '_blank' ], true )
-                                        ? $input['link_target']
+            'min_word_length'    => absint( $raw['min_word_length'] ?? 4 ),
+            'max_links_per_post' => absint( $raw['max_links_per_post'] ?? 5 ),
+            'link_target'        => in_array( $raw['link_target'] ?? '', [ '_self', '_blank' ], true )
+                                        ? sanitize_text_field( $raw['link_target'] )
                                         : '_self',
-            'link_rel'           => sanitize_text_field( $input['link_rel'] ?? '' ),
-            'excluded_post_ids'  => sanitize_textarea_field( $input['excluded_post_ids'] ?? '' ),
+            'link_rel'           => sanitize_text_field( $raw['link_rel'] ?? '' ),
+            'excluded_post_ids'  => sanitize_textarea_field( $raw['excluded_post_ids'] ?? '' ),
         ];
 
-        // Allow Pro plugin to save its own settings fields
-        $clean = apply_filters( 'linkiya_save_settings', $clean, $input );
+        // Allow Pro plugin to save its own settings fields — pass sanitized $clean, not raw input.
+        $clean = apply_filters( 'linkiya_save_settings', $clean, $clean );
 
         update_option( self::OPTION_KEY, $clean );
 
@@ -134,7 +134,7 @@ class Linkiya_Settings {
             exit;
         }
         global $wp_filesystem;
-        $json = $wp_filesystem->get_contents( $file['tmp_name'] );
+        $json = $wp_filesystem->get_contents( sanitize_text_field( $file['tmp_name'] ) );
         if ( false === $json ) {
             wp_safe_redirect( add_query_arg( [ 'page' => 'linkiya', 'import_error' => '1' ], admin_url( 'admin.php' ) ) );
             exit;

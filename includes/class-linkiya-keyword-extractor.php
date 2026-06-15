@@ -59,12 +59,17 @@ class Linkiya_Keyword_Extractor {
      * Delete the cached keyword map so the next scan rebuilds it.
      */
     public static function invalidate_cache(): void {
-        // Delete all post-type-combination variants of the cache key.
-        $post_types  = self::get_all_public_post_types();
-        $cache_key   = self::CACHE_KEY . '_' . md5( implode( ',', $post_types ) );
-        delete_transient( $cache_key );
-        // Also delete the base key for safety (e.g. cached by older code).
-        delete_transient( self::CACHE_KEY );
+        global $wpdb;
+        // Delete all variants of the keyword map transient regardless of post-type hash suffix.
+        $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$wpdb->options}
+                 WHERE option_name LIKE %s
+                    OR option_name LIKE %s",
+                $wpdb->esc_like( '_transient_' . self::CACHE_KEY ) . '%',
+                $wpdb->esc_like( '_transient_timeout_' . self::CACHE_KEY ) . '%'
+            )
+        ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
     }
 
     /**
