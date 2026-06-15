@@ -90,17 +90,40 @@ class Linkiya_REST_API {
 
     public static function handle_suggest( WP_REST_Request $request ): WP_REST_Response {
         // Rate limit: max 20 scans per user per minute.
-        $rate_key = 'linkiya_rl_' . get_current_user_id();
-        // Use add_transient to atomically set only when key doesn't exist,
-        // then increment via a separate counter to avoid race conditions.
-        if ( false === get_transient( $rate_key ) ) {
-            set_transient( $rate_key, 1, MINUTE_IN_SECONDS );
-        } else {
-            $attempts = (int) get_transient( $rate_key );
-            if ( $attempts >= 20 ) {
-                return new WP_REST_Response( [ 'error' => 'Too many requests. Please wait a moment.' ], 429 );
-            }
-            set_transient( $rate_key, $attempts + 1, MINUTE_IN_SECONDS );
+        // Atomic increment via direct DB query prevents TOCTOU race conditions.
+        global $wpdb;
+        $rate_key     = '_transient_linkiya_rl_' . get_current_user_id();
+        $timeout_key  = '_transient_timeout_linkiya_rl_' . get_current_user_id();
+        $expiry       = time() + MINUTE_IN_SECONDS;
+
+        // Insert counter row if not present (atomic — ignores duplicate key).
+        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload)
+                 VALUES (%s, %d, 'no'), (%s, %d, 'no')",
+                $rate_key, 1, $timeout_key, $expiry
+            )
+        );
+
+        if ( $wpdb->rows_affected === 0 ) {
+            // Row already existed — atomically increment.
+            $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+                $wpdb->prepare(
+                    "UPDATE {$wpdb->options} SET option_value = option_value + 1 WHERE option_name = %s",
+                    $rate_key
+                )
+            );
+        }
+
+        $attempts = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+                $rate_key
+            )
+        );
+
+        if ( $attempts > 20 ) {
+            return new WP_REST_Response( [ 'error' => __( 'Too many requests. Please wait a moment.', 'linkiya' ) ], 429 );
         }
 
         $body    = $request->get_json_params();

@@ -104,7 +104,9 @@ class Linkiya_Settings {
         header( 'Content-Disposition: attachment; filename="linkiya-settings-' . wp_date( 'Y-m-d' ) . '.json"' );
         $encoded = wp_json_encode( $data, JSON_PRETTY_PRINT );
         if ( false !== $encoded ) {
-            echo $encoded; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            // Output is application/json — not HTML — so standard HTML escaping does not apply.
+            // wp_json_encode() produces safe JSON; the Content-Type header prevents browser HTML parsing.
+            echo $encoded; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON output served as application/json, not HTML.
         }
         exit;
     }
@@ -134,7 +136,13 @@ class Linkiya_Settings {
             exit;
         }
         global $wp_filesystem;
-        $json = $wp_filesystem->get_contents( sanitize_text_field( $file['tmp_name'] ) );
+        // tmp_name is a server-generated path — validate it is within the system temp dir, do not sanitize.
+        $tmp_name = $file['tmp_name'];
+        if ( ! is_uploaded_file( $tmp_name ) ) {
+            wp_safe_redirect( add_query_arg( [ 'page' => 'linkiya', 'import_error' => '1' ], admin_url( 'admin.php' ) ) );
+            exit;
+        }
+        $json = $wp_filesystem->get_contents( $tmp_name );
         if ( false === $json ) {
             wp_safe_redirect( add_query_arg( [ 'page' => 'linkiya', 'import_error' => '1' ], admin_url( 'admin.php' ) ) );
             exit;
