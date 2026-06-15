@@ -11,9 +11,8 @@ delete_option( 'linkiya_settings' );
 delete_option( 'linkiya_db_version' );
 
 // Delete rate-limit transients for all users.
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall runs once; no caching needed. No ORM alternative exists for wildcard transient deletion.
 global $wpdb;
-$wpdb->query(
+$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall runs once; no caching needed. No WordPress API supports wildcard transient deletion.
     $wpdb->prepare(
         "DELETE FROM {$wpdb->options}
          WHERE option_name LIKE %s
