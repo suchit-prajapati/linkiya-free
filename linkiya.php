@@ -8,7 +8,7 @@
  * Author URI:        https://www.mypluginstore.com
  * License:           GPL-2.0+
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       linkiya
+ * Text Domain:       linkiya-free
  * Domain Path:       /languages
  * Requires at least: 6.0
  * Requires PHP:      8.0

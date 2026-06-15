@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -96,8 +96,9 @@ class Linkiya_REST_API {
         $timeout_key  = '_transient_timeout_linkiya_rl_' . get_current_user_id();
         $expiry       = time() + MINUTE_IN_SECONDS;
 
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Atomic INSERT IGNORE + UPDATE prevents TOCTOU race conditions. No WordPress API supports atomic transient increments.
         // Insert counter row if not present (atomic — ignores duplicate key).
-        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $wpdb->query(
             $wpdb->prepare(
                 "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload)
                  VALUES (%s, %d, 'no'), (%s, %d, 'no')",
@@ -107,7 +108,7 @@ class Linkiya_REST_API {
 
         if ( $wpdb->rows_affected === 0 ) {
             // Row already existed — atomically increment.
-            $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->query(
                 $wpdb->prepare(
                     "UPDATE {$wpdb->options} SET option_value = option_value + 1 WHERE option_name = %s",
                     $rate_key
@@ -115,15 +116,16 @@ class Linkiya_REST_API {
             );
         }
 
-        $attempts = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $attempts = (int) $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
                 $rate_key
             )
         );
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
         if ( $attempts > 20 ) {
-            return new WP_REST_Response( [ 'error' => __( 'Too many requests. Please wait a moment.', 'linkiya' ) ], 429 );
+            return new WP_REST_Response( [ 'error' => __( 'Too many requests. Please wait a moment.', 'linkiya-free' ) ], 429 );
         }
 
         $body    = $request->get_json_params();

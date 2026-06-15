@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -38,8 +38,8 @@ class Linkiya_Settings {
 
     public static function register_menu(): void {
         add_menu_page(
-            __( 'Linkiya', 'linkiya' ),
-            __( 'Linkiya', 'linkiya' ),
+            __( 'Linkiya', 'linkiya-free' ),
+            __( 'Linkiya', 'linkiya-free' ),
             'manage_options',
             'linkiya',
             [ __CLASS__, 'render_page' ],
@@ -49,8 +49,8 @@ class Linkiya_Settings {
 
         add_submenu_page(
             'linkiya',
-            __( 'Settings', 'linkiya' ),
-            __( 'Settings', 'linkiya' ),
+            __( 'Settings', 'linkiya-free' ),
+            __( 'Settings', 'linkiya-free' ),
             'manage_options',
             'linkiya',
             [ __CLASS__, 'render_page' ]
@@ -68,8 +68,9 @@ class Linkiya_Settings {
 
     public static function handle_save(): void {
         check_admin_referer( 'linkiya_settings_nonce' );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya-free' ) );
 
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each field is individually sanitized below via absint(), sanitize_text_field(), etc.
         $raw   = isset( $_POST['linkiya_settings'] ) ? wp_unslash( $_POST['linkiya_settings'] ) : [];
 
         $clean = [
@@ -95,7 +96,7 @@ class Linkiya_Settings {
 
     public static function handle_export(): void {
         check_admin_referer( 'linkiya_export_settings' );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya-free' ) );
 
         $data = self::get();
         $data = apply_filters( 'linkiya_export_settings', $data );
@@ -115,8 +116,9 @@ class Linkiya_Settings {
 
     public static function handle_import(): void {
         check_admin_referer( 'linkiya_import_settings' );
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Unauthorized', 'linkiya-free' ) );
 
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- tmp_name is a server-generated path validated via is_uploaded_file(); other fields validated below.
         $file = isset( $_FILES['linkiya_import_file'] ) ? wp_unslash( $_FILES['linkiya_import_file'] ) : null;
         if ( ! $file || $file['error'] !== UPLOAD_ERR_OK ) {
             wp_safe_redirect( add_query_arg( [ 'page' => 'linkiya', 'import_error' => '1' ], admin_url( 'admin.php' ) ) );

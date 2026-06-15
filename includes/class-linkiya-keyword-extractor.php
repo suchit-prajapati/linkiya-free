@@ -61,6 +61,7 @@ class Linkiya_Keyword_Extractor {
     public static function invalidate_cache(): void {
         global $wpdb;
         // Delete all variants of the keyword map transient regardless of post-type hash suffix.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Required to delete all hash-suffixed transient variants; no WordPress API supports wildcard transient deletion. Cache is being invalidated, not read.
         $wpdb->query(
             $wpdb->prepare(
                 "DELETE FROM {$wpdb->options}
@@ -69,7 +70,7 @@ class Linkiya_Keyword_Extractor {
                 $wpdb->esc_like( '_transient_' . self::CACHE_KEY ) . '%',
                 $wpdb->esc_like( '_transient_timeout_' . self::CACHE_KEY ) . '%'
             )
-        ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        );
     }
 
     /**

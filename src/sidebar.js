@@ -1,4 +1,4 @@
-import './sidebar.css';
+﻿import './sidebar.css';
 import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar, PluginSidebarMoreMenuItem } from '@wordpress/edit-post';
 import { useSelect, useDispatch } from '@wordpress/data';

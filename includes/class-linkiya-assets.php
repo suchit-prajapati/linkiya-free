@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -47,7 +47,7 @@ class Linkiya_Assets {
 		// Enable JavaScript translations.
 		wp_set_script_translations(
 			'linkiya-sidebar',
-			'linkiya',
+			'linkiya-free',
 			LINKIYA_PLUGIN_DIR . 'languages'
 		);
 
