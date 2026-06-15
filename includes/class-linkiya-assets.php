@@ -1,4 +1,10 @@
 <?php
+/**
+ * Linkiya Assets — script and style enqueuing.
+ *
+ * @package Linkiya
+ */
+
 defined( 'ABSPATH' ) || exit;
 
 /**
