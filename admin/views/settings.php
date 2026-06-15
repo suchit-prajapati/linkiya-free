@@ -1,4 +1,4 @@
-﻿<?php defined( 'ABSPATH' ) || exit; ?>
+<?php defined( 'ABSPATH' ) || exit; ?>
 <div class="wrap">
     <h1>⚙️ <?php esc_html_e( 'Linkiya — Settings', 'linkiya-free' ); ?></h1>
 
@@ -138,7 +138,7 @@
                 'Link intent analysis (AI-powered)',
                 'AI suggestions — semantic, context-aware links via Claude or OpenAI',
             ];
-            foreach ( $linkiya_pro_features as $feature ) : ?>
+            foreach ( $linkiya_pro_features as $linkiya_pro_feature ) : ?>
             <li>✅ <?php echo esc_html( $linkiya_pro_feature ); ?></li>
             <?php endforeach; ?>
         </ul>
