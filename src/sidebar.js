@@ -157,6 +157,19 @@ function SmartInternalLinkerSidebar() {
         }
     };
 
+    /* ── Remove all links ────────────────────────────────────────────── */
+
+    const removeLinks = async () => {
+        const liveContent = wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() );
+        // Strip all <a> tags but keep their inner text.
+        const stripped = liveContent.replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
+        const blocks = wp.blocks.parse( stripped );
+        await resetBlocks( blocks );
+        setSuggestions( [] );
+        setChecked( {} );
+        setStatus( STATUS.IDLE );
+    };
+
     /* ── Helpers ──────────────────────────────────────────────────── */
 
     const toggleAll = val => {
@@ -236,6 +249,15 @@ function SmartInternalLinkerSidebar() {
                         <PanelRow>
                             <Button variant="primary" className="linkiya-run-btn" onClick={ runAnalysis } icon={ ICON }>
                                 { __( 'Run Internal Linking', 'linkiya' ) }
+                            </Button>
+                        </PanelRow>
+                    ) }
+
+                    { /* Remove all links button */ }
+                    { ( status === STATUS.IDLE || status === STATUS.ERROR || status === STATUS.APPLIED || status === STATUS.DONE ) && (
+                        <PanelRow>
+                            <Button variant="tertiary" className="linkiya-remove-btn" onClick={ removeLinks } isDestructive>
+                                { __( 'Remove All Links', 'linkiya' ) }
                             </Button>
                         </PanelRow>
                     ) }
