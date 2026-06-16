@@ -17,6 +17,13 @@ const ICON = (
 
 const STATUS = { IDLE:'idle', LOADING:'loading', DONE:'done', APPLYING:'applying', APPLIED:'applied', ERROR:'error' };
 
+// Safe JSON serializer — drops any value that is not a plain primitive/array/object.
+const safeStringify = ( value ) => safeStringify( value, ( _key, val ) => {
+    if ( val === null || typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' ) return val;
+    if ( Array.isArray( val ) || ( typeof val === 'object' && val !== null && val.constructor === Object ) ) return val;
+    return undefined; // drop DOM nodes, React fibers, class instances, etc.
+} );
+
 const adminUrl = ( page ) => {
     const base = linkiyaData.adminUrl || '/wp-admin/';
     return base + 'admin.php?page=' + page;
@@ -56,7 +63,7 @@ function SmartInternalLinkerSidebar() {
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-            body: JSON.stringify( { post_id: postId, content: scanContent } ),
+            body: safeStringify( { post_id: postId, content: scanContent } ),
         } );
         const data = await res.json();
         if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Server error', 'linkiya' ) );
@@ -155,7 +162,7 @@ function SmartInternalLinkerSidebar() {
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-                body: JSON.stringify( { post_id: postId, content: applyContent, accepted } ),
+                body: safeStringify( { post_id: postId, content: applyContent, accepted } ),
             } );
             const data = await res.json();
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
