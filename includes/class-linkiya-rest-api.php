@@ -216,6 +216,14 @@ class Linkiya_REST_API {
 			return new WP_REST_Response( array( 'error' => 'Invalid post_id.' ), 400 );
 		}
 
+		// If no content passed from JS, read directly from the database.
+		if ( '' === $content ) {
+			$post = get_post( $post_id );
+			if ( $post ) {
+				$content = $post->post_content;
+			}
+		}
+
 		// Free: posts and pages only.
 		$post_types = apply_filters( 'linkiya_suggest_post_types', array( 'post', 'page' ), $post_id );
 
@@ -277,6 +285,15 @@ class Linkiya_REST_API {
 		if ( ! $post_id ) {
 			return new WP_REST_Response( array( 'error' => 'Invalid post_id.' ), 400 );
 		}
+
+		// If no content passed from JS, read directly from the database.
+		if ( '' === $content ) {
+			$post = get_post( $post_id );
+			if ( $post ) {
+				$content = $post->post_content;
+			}
+		}
+
 		if ( empty( $content ) ) {
 			return new WP_REST_Response( array( 'error' => 'No content provided.' ), 400 );
 		}

@@ -1,8 +1,7 @@
 import './sidebar.css';
 import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar, PluginSidebarMoreMenuItem } from '@wordpress/edit-post';
-import { useDispatch } from '@wordpress/data';
-import { useState, useRef } from '@wordpress/element';
+import { useState } from '@wordpress/element';
 import {
     Button, CheckboxControl, Spinner, Notice, PanelBody, PanelRow, TextControl,
 } from '@wordpress/components';
@@ -17,17 +16,6 @@ const ICON = (
 
 const STATUS = { IDLE:'idle', LOADING:'loading', DONE:'done', APPLYING:'applying', APPLIED:'applied', ERROR:'error' };
 
-// Safe JSON serializer — breaks circular refs by tracking seen objects.
-const safeStringify = ( value ) => {
-    const seen = new WeakSet();
-    return JSON.stringify( value, ( _key, val ) => {
-        if ( typeof val === 'object' && val !== null ) {
-            if ( seen.has( val ) ) return undefined;
-            seen.add( val );
-        }
-        return val;
-    } );
-};
 
 const adminUrl = ( page ) => {
     const base = linkiyaData.adminUrl || '/wp-admin/';
@@ -38,28 +26,8 @@ const adminUrl = ( page ) => {
 const suggKey = ( s ) => s.source === 'ai' ? `ai:${ s.post_id }` : s.keyword;
 
 function SmartInternalLinkerSidebar() {
-    // postId comes from PHP via linkiyaData — no wp.data access needed.
+    // postId comes from PHP — zero wp.data / iframe access.
     const postId = linkiyaData.postId;
-    const { resetBlocks } = useDispatch( 'core/block-editor' );
-    const appliedContentRef = useRef( null );
-
-    // Fetch post content from WP REST API — avoids any cross-origin iframe access.
-    // Tries /posts/ first, falls back to /pages/ for page post type.
-    const getLiveContent = async () => {
-        if ( appliedContentRef.current ) return appliedContentRef.current;
-        const headers = { 'X-WP-Nonce': linkiyaData.nonce };
-        for ( const type of [ 'posts', 'pages' ] ) {
-            const res = await fetch(
-                `${ linkiyaData.wpRestUrl }/${ type }/${ postId }?context=edit`,
-                { headers }
-            );
-            if ( res.ok ) {
-                const json = await res.json();
-                return json.content?.raw || '';
-            }
-        }
-        return '';
-    };
 
     const isPro              = linkiyaData.isPro;
     const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
@@ -78,12 +46,11 @@ function SmartInternalLinkerSidebar() {
 
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
-    const fetchKeywordSuggestions = async ( overrideContent = null ) => {
-        const scanContent = overrideContent || await getLiveContent();
+    const fetchKeywordSuggestions = async () => {
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-            body: safeStringify( { post_id: postId, content: scanContent } ),
+            body: JSON.stringify( { post_id: postId } ),
         } );
         const data = await res.json();
         if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Server error', 'linkiya' ) );
@@ -96,12 +63,10 @@ function SmartInternalLinkerSidebar() {
     const fetchAiSuggestions = async () => {
         if ( ! aiEnabled || ! aiNonce || ! aiUrl ) return [];
 
-        const liveContent = await getLiveContent();
         const formData = new FormData();
         formData.append( 'action',   'linkiya_ai_suggest' );
         formData.append( 'nonce',    aiNonce );
         formData.append( 'post_id',  postId );
-        formData.append( 'content',  liveContent );
 
         const res  = await fetch( aiUrl, { method: 'POST', body: formData } );
         const data = await res.json();
@@ -112,10 +77,7 @@ function SmartInternalLinkerSidebar() {
 
     /* ── Run analysis (keyword + AI in parallel) ──────────────────── */
 
-    const runAnalysis = async ( overrideContent = null ) => {
-        if ( ! overrideContent ) {
-            appliedContentRef.current = null;
-        }
+    const runAnalysis = async () => {
         setStatus( STATUS.LOADING );
         setSuggestions( [] );
         setChecked( {} );
@@ -127,7 +89,7 @@ function SmartInternalLinkerSidebar() {
         try {
             // Run both in parallel — AI failure won't block keyword results
             const [ keywordSuggs, aiSuggs ] = await Promise.all( [
-                fetchKeywordSuggestions( overrideContent ),
+                fetchKeywordSuggestions(),
                 fetchAiSuggestions().catch( () => [] ),
             ] );
 
@@ -178,21 +140,24 @@ function SmartInternalLinkerSidebar() {
         setStatus( STATUS.APPLYING );
 
         try {
-            const applyContent = await getLiveContent();
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-                body: safeStringify( { post_id: postId, content: applyContent, accepted } ),
+                body: JSON.stringify( { post_id: postId, accepted } ),
             } );
             const data = await res.json();
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
 
-            const blocks = wp.blocks.parse( data.new_content );
-            await resetBlocks( blocks );
+            // Save new content to post via WP REST API, then reload so editor reflects it.
+            await fetch( `${ linkiyaData.wpRestUrl }/posts/${ postId }`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
+                body: JSON.stringify( { content: data.new_content } ),
+            } );
+
             setAppliedCount( data.applied );
             setStatus( STATUS.APPLIED );
-            // Store applied content so rescan uses it instead of stale block tree.
-            appliedContentRef.current = data.new_content;
+            setTimeout( () => window.location.reload(), 1500 );
         } catch ( err ) {
             setErrorMsg( err.message );
             setStatus( STATUS.ERROR );
@@ -202,14 +167,31 @@ function SmartInternalLinkerSidebar() {
     /* ── Remove all links ────────────────────────────────────────────── */
 
     const removeLinks = async () => {
-        const liveContent = await getLiveContent();
-        // Strip all <a> tags but keep their inner text.
-        const stripped = liveContent.replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
-        const blocks = wp.blocks.parse( stripped );
-        await resetBlocks( blocks );
-        setSuggestions( [] );
-        setChecked( {} );
-        setStatus( STATUS.IDLE );
+        setStatus( STATUS.LOADING );
+        try {
+            // Fetch current post content from DB, strip links, save back.
+            const getRes = await fetch(
+                `${ linkiyaData.wpRestUrl }/posts/${ postId }?context=edit`,
+                { headers: { 'X-WP-Nonce': linkiyaData.nonce } }
+            );
+            if ( ! getRes.ok ) throw new Error( __( 'Failed to fetch post content.', 'linkiya' ) );
+            const post = await getRes.json();
+            const stripped = ( post.content?.raw || '' ).replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
+
+            await fetch( `${ linkiyaData.wpRestUrl }/posts/${ postId }`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
+                body: JSON.stringify( { content: stripped } ),
+            } );
+
+            setSuggestions( [] );
+            setChecked( {} );
+            setStatus( STATUS.IDLE );
+            setTimeout( () => window.location.reload(), 1000 );
+        } catch ( err ) {
+            setErrorMsg( err.message );
+            setStatus( STATUS.ERROR );
+        }
     };
 
     /* ── Helpers ──────────────────────────────────────────────────── */
