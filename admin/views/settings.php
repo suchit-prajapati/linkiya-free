@@ -2,7 +2,11 @@
 /**
  * Linkiya settings page template.
  *
- * @package Linkiya
+ * @package  Linkiya
+ * @category Admin
+ * @author   Linkiya
+ * @license  GPL-2.0-or-later
+ * @link     https://linkiya.com
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -135,23 +139,23 @@ defined( 'ABSPATH' ) || exit;
 	<div class="linkiya-pro-card" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:28px 32px;">
 		<h2 style="color:#15803d;margin-top:0">🎉 <?php esc_html_e( 'Linkiya Pro is Active!', 'linkiya-free' ); ?></h2>
 		<ul style="margin-bottom:20px">
-			<?php
-			$linkiya_pro_features = array(
-				'Bulk linking across your entire site',
-				'Link report dashboard',
-				'Broken link scanner with auto-fix',
-				'Orphan post detection',
-				'Custom post type support',
-				'Same-category filtering',
-				'Inbound link analysis',
-				'Click analytics and reporting',
-				'Link intent analysis (AI-powered)',
-				'AI suggestions — semantic, context-aware links via Claude or OpenAI',
-			);
-			foreach ( $linkiya_pro_features as $linkiya_pro_feature ) :
-				?>
+		<?php
+		$linkiya_pro_features = array(
+			'Bulk linking across your entire site',
+			'Link report dashboard',
+			'Broken link scanner with auto-fix',
+			'Orphan post detection',
+			'Custom post type support',
+			'Same-category filtering',
+			'Inbound link analysis',
+			'Click analytics and reporting',
+			'Link intent analysis (AI-powered)',
+			'AI suggestions — semantic, context-aware links via Claude or OpenAI',
+		);
+		foreach ( $linkiya_pro_features as $linkiya_pro_feature ) :
+			?>
 			<li>✅ <?php echo esc_html( $linkiya_pro_feature ); ?></li>
-			<?php endforeach; ?>
+		<?php endforeach; ?>
 		</ul>
 		<div style="background:#dcfce7;border-radius:8px;padding:14px 20px;display:inline-block;font-size:15px;font-weight:600;color:#166534;">
 			🚀 <?php esc_html_e( 'Hurray! You have activated Linkiya Pro. All features are unlocked.', 'linkiya-free' ); ?>
@@ -175,7 +179,7 @@ defined( 'ABSPATH' ) || exit;
 		</ul>
 		<a href="https://www.mypluginstore.com/linkiya" target="_blank" rel="noopener noreferrer"
 			class="button button-primary button-large">
-			<?php esc_html_e( 'Get Linkiya Pro', 'linkiya-free' ); ?>
+		<?php esc_html_e( 'Get Linkiya Pro', 'linkiya-free' ); ?>
 		</a>
 	</div>
 	<?php endif; ?>
