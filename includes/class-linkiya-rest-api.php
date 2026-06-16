@@ -156,7 +156,24 @@ class Linkiya_REST_API {
 		$timeout_key = '_transient_timeout_linkiya_rl_' . get_current_user_id();
 		$expiry      = time() + MINUTE_IN_SECONDS;
 
-        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Atomic INSERT IGNORE + UPDATE prevents TOCTOU race conditions. No WordPress API supports atomic transient increments.
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Atomic rate limiting via direct DB; no WordPress API supports atomic transient increments or expiry-based resets.
+		// If the window has expired, delete both rows so the next INSERT IGNORE starts fresh.
+		$stored_expiry = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+				$timeout_key
+			)
+		);
+		if ( $stored_expiry > 0 && time() > $stored_expiry ) {
+			$wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name = %s OR option_name = %s",
+					$rate_key,
+					$timeout_key
+				)
+			);
+		}
+
 		// Insert counter row if not present (atomic — ignores duplicate key).
 		$wpdb->query(
 			$wpdb->prepare(
