@@ -38,15 +38,22 @@ const adminUrl = ( page ) => {
 const suggKey = ( s ) => s.source === 'ai' ? `ai:${ s.post_id }` : s.keyword;
 
 function SmartInternalLinkerSidebar() {
-    const { postId, currentContent } = useSelect( ( select ) => ( {
-        postId:         select( 'core/editor' ).getCurrentPostId(),
-        currentContent: select( 'core/editor' ).getEditedPostAttribute( 'content' ),
-    } ) );
-    const { editPost }      = useDispatch( 'core/editor' );
-    const { resetBlocks }   = useDispatch( 'core/block-editor' );
+    const postId = useSelect( ( select ) => select( 'core/editor' ).getCurrentPostId() );
+    const { resetBlocks } = useDispatch( 'core/block-editor' );
     const appliedContentRef = useRef( null );
-    const currentContentRef = useRef( '' );
-    currentContentRef.current = currentContent || '';
+
+    // Get live editor content safely — serialize blocks from core/block-editor
+    // (same frame as sidebar). Never call core/editor.getEditedPostAttribute
+    // which crosses into the iframed canvas and is blocked by the browser.
+    const getLiveContent = () => {
+        if ( appliedContentRef.current ) return appliedContentRef.current;
+        try {
+            const blocks = wp.data.select( 'core/block-editor' ).getBlocks();
+            return wp.blocks.serialize( blocks );
+        } catch ( e ) {
+            return '';
+        }
+    };
 
     const isPro              = linkiyaData.isPro;
     const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
@@ -66,7 +73,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
     const fetchKeywordSuggestions = async ( overrideContent = null ) => {
-        const scanContent = overrideContent || appliedContentRef.current || currentContentRef.current;
+        const scanContent = overrideContent || getLiveContent();
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -83,7 +90,7 @@ function SmartInternalLinkerSidebar() {
     const fetchAiSuggestions = async () => {
         if ( ! aiEnabled || ! aiNonce || ! aiUrl ) return [];
 
-        const liveContent = appliedContentRef.current || currentContentRef.current;
+        const liveContent = getLiveContent();
         const formData = new FormData();
         formData.append( 'action',   'linkiya_ai_suggest' );
         formData.append( 'nonce',    aiNonce );
@@ -165,7 +172,7 @@ function SmartInternalLinkerSidebar() {
         setStatus( STATUS.APPLYING );
 
         try {
-            const applyContent = appliedContentRef.current || currentContentRef.current;
+            const applyContent = getLiveContent();
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -189,7 +196,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Remove all links ────────────────────────────────────────────── */
 
     const removeLinks = async () => {
-        const liveContent = appliedContentRef.current || currentContentRef.current;
+        const liveContent = getLiveContent();
         // Strip all <a> tags but keep their inner text.
         const stripped = liveContent.replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
         const blocks = wp.blocks.parse( stripped );
