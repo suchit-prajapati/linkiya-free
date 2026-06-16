@@ -2,7 +2,7 @@ import './sidebar.css';
 import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar, PluginSidebarMoreMenuItem } from '@wordpress/edit-post';
 import { useSelect, useDispatch } from '@wordpress/data';
-import { useState, useEffect } from '@wordpress/element';
+import { useState, useEffect, useRef } from '@wordpress/element';
 import {
     Button, CheckboxControl, Spinner, Notice, PanelBody, PanelRow, TextControl,
 } from '@wordpress/components';
@@ -30,8 +30,9 @@ function SmartInternalLinkerSidebar() {
         postId:         select( 'core/editor' ).getCurrentPostId(),
         currentContent: select( 'core/editor' ).getEditedPostAttribute( 'content' ),
     } ) );
-    const { editPost }    = useDispatch( 'core/editor' );
-    const { resetBlocks } = useDispatch( 'core/block-editor' );
+    const { editPost }      = useDispatch( 'core/editor' );
+    const { resetBlocks }   = useDispatch( 'core/block-editor' );
+    const appliedContentRef = useRef( null );
 
     const isPro              = linkiyaData.isPro;
     const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
@@ -50,8 +51,8 @@ function SmartInternalLinkerSidebar() {
 
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
-    const fetchKeywordSuggestions = async () => {
-        const scanContent = wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() );
+    const fetchKeywordSuggestions = async ( overrideContent = null ) => {
+        const scanContent = overrideContent || appliedContentRef.current || wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() );
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -84,7 +85,10 @@ function SmartInternalLinkerSidebar() {
 
     /* ── Run analysis (keyword + AI in parallel) ──────────────────── */
 
-    const runAnalysis = async () => {
+    const runAnalysis = async ( overrideContent = null ) => {
+        if ( ! overrideContent ) {
+            appliedContentRef.current = null;
+        }
         setStatus( STATUS.LOADING );
         setSuggestions( [] );
         setChecked( {} );
@@ -96,7 +100,7 @@ function SmartInternalLinkerSidebar() {
         try {
             // Run both in parallel — AI failure won't block keyword results
             const [ keywordSuggs, aiSuggs ] = await Promise.all( [
-                fetchKeywordSuggestions(),
+                fetchKeywordSuggestions( overrideContent ),
                 fetchAiSuggestions().catch( () => [] ),
             ] );
 
@@ -151,6 +155,8 @@ function SmartInternalLinkerSidebar() {
             await resetBlocks( blocks );
             setAppliedCount( data.applied );
             setStatus( STATUS.APPLIED );
+            // Store applied content so rescan uses it instead of stale block tree.
+            appliedContentRef.current = data.new_content;
         } catch ( err ) {
             setErrorMsg( err.message );
             setStatus( STATUS.ERROR );
