@@ -157,7 +157,6 @@ function SmartInternalLinkerSidebar() {
 
             setAppliedCount( data.applied );
             setStatus( STATUS.APPLIED );
-            setTimeout( () => window.location.reload(), 1500 );
         } catch ( err ) {
             setErrorMsg( err.message );
             setStatus( STATUS.ERROR );
@@ -187,7 +186,6 @@ function SmartInternalLinkerSidebar() {
             setSuggestions( [] );
             setChecked( {} );
             setStatus( STATUS.IDLE );
-            setTimeout( () => window.location.reload(), 1000 );
         } catch ( err ) {
             setErrorMsg( err.message );
             setStatus( STATUS.ERROR );

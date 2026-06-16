@@ -33,6 +33,18 @@ class Linkiya_Matcher {
 	 */
 	public static function find_suggestions( string $content, array $keyword_map ): array {
 
+		// Collect post IDs already linked anywhere in the content.
+		$already_linked_ids = array();
+		if ( preg_match_all( '/<a\b[^>]*\bhref=["\']([^"\']+)["\'][^>]*>/is', $content, $href_matches ) ) {
+			foreach ( $href_matches[1] as $href ) {
+				foreach ( $keyword_map as $entry ) {
+					if ( ! empty( $entry['url'] ) && rtrim( $entry['url'], '/' ) === rtrim( $href, '/' ) ) {
+						$already_linked_ids[ (int) $entry['post_id'] ] = true;
+					}
+				}
+			}
+		}
+
 		// Strip existing <a>…</a> spans so we don't re-suggest already-linked text.
 		$stripped = preg_replace( '/<a\b[^>]*>.*?<\/a>/is', ' LINKED_PLACEHOLDER ', $content );
 
@@ -53,6 +65,11 @@ class Linkiya_Matcher {
 			$entry_id = (int) $entry['post_id'];
 
 			if ( $entry_id > 0 && isset( $matched_post_ids[ $entry_id ] ) ) {
+				continue;
+			}
+
+			// Skip posts already linked anywhere in the content.
+			if ( $entry_id > 0 && isset( $already_linked_ids[ $entry_id ] ) ) {
 				continue;
 			}
 
