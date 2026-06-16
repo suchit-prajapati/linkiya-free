@@ -36,6 +36,9 @@ class Linkiya_Matcher {
 		// Strip existing <a>…</a> spans so we don't re-suggest already-linked text.
 		$stripped = preg_replace( '/<a\b[^>]*>.*?<\/a>/is', ' LINKED_PLACEHOLDER ', $content );
 
+		// Strip heading tags so keywords that only appear in headings are not suggested.
+		$stripped = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
+
 		// Strip all other HTML tags to get plain searchable text.
 		$plain_text = wp_strip_all_tags( $stripped );
 
@@ -147,7 +150,8 @@ class Linkiya_Matcher {
 	private static function link_first_occurrence( string $content, string $keyword, string $anchor, string $url, string $title, string $target = '_self', string $rel = '' ): string {
 		$linked = false;
 
-		$pattern = '/(<a\b[^>]*>.*?<\/a>)/is';
+		// Split on existing <a> tags AND heading tags — never link inside either.
+		$pattern = '/(<a\b[^>]*>.*?<\/a>|<h[1-6]\b[^>]*>.*?<\/h[1-6]>)/is';
 		$parts   = preg_split( $pattern, $content, -1, PREG_SPLIT_DELIM_CAPTURE );
 
 		// Build the <a> tag with optional target and rel.
@@ -165,7 +169,7 @@ class Linkiya_Matcher {
 
 		$result = '';
 		foreach ( $parts as $part ) {
-			if ( ! $linked && ! preg_match( '/^<a\b/i', $part ) ) {
+			if ( ! $linked && ! preg_match( '/^<a\b/i', $part ) && ! preg_match( '/^<h[1-6]\b/i', $part ) ) {
 				$escaped = preg_quote( $keyword, '/' );
 				// Replace keyword with custom anchor text if different.
 				$link_text = ( $anchor !== $keyword ) ? esc_html( $anchor ) : '$1';
