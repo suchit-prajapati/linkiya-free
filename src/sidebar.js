@@ -17,12 +17,17 @@ const ICON = (
 
 const STATUS = { IDLE:'idle', LOADING:'loading', DONE:'done', APPLYING:'applying', APPLIED:'applied', ERROR:'error' };
 
-// Safe JSON serializer — drops any value that is not a plain primitive/array/object.
-const safeStringify = ( value ) => safeStringify( value, ( _key, val ) => {
-    if ( val === null || typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' ) return val;
-    if ( Array.isArray( val ) || ( typeof val === 'object' && val !== null && val.constructor === Object ) ) return val;
-    return undefined; // drop DOM nodes, React fibers, class instances, etc.
-} );
+// Safe JSON serializer — breaks circular refs by tracking seen objects.
+const safeStringify = ( value ) => {
+    const seen = new WeakSet();
+    return JSON.stringify( value, ( _key, val ) => {
+        if ( typeof val === 'object' && val !== null ) {
+            if ( seen.has( val ) ) return undefined;
+            seen.add( val );
+        }
+        return val;
+    } );
+};
 
 const adminUrl = ( page ) => {
     const base = linkiyaData.adminUrl || '/wp-admin/';
