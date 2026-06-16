@@ -51,7 +51,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
     const fetchKeywordSuggestions = async () => {
-        const scanContent = wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
+        const scanContent = wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() );
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -68,11 +68,12 @@ function SmartInternalLinkerSidebar() {
     const fetchAiSuggestions = async () => {
         if ( ! aiEnabled || ! aiNonce || ! aiUrl ) return [];
 
+        const liveContent = wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() );
         const formData = new FormData();
         formData.append( 'action',   'linkiya_ai_suggest' );
         formData.append( 'nonce',    aiNonce );
         formData.append( 'post_id',  postId );
-        formData.append( 'content',  currentContent );
+        formData.append( 'content',  liveContent );
 
         const res  = await fetch( aiUrl, { method: 'POST', body: formData } );
         const data = await res.json();
@@ -141,7 +142,7 @@ function SmartInternalLinkerSidebar() {
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-                body: JSON.stringify( { post_id: postId, content: wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' ), accepted } ),
+                body: JSON.stringify( { post_id: postId, content: wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() ), accepted } ),
             } );
             const data = await res.json();
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
