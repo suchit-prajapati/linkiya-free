@@ -52,7 +52,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
     const fetchKeywordSuggestions = async ( overrideContent = null ) => {
-        const scanContent = overrideContent || appliedContentRef.current || wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() );
+        const scanContent = overrideContent || appliedContentRef.current || wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -69,7 +69,7 @@ function SmartInternalLinkerSidebar() {
     const fetchAiSuggestions = async () => {
         if ( ! aiEnabled || ! aiNonce || ! aiUrl ) return [];
 
-        const liveContent = wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() );
+        const liveContent = appliedContentRef.current || wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
         const formData = new FormData();
         formData.append( 'action',   'linkiya_ai_suggest' );
         formData.append( 'nonce',    aiNonce );
@@ -151,10 +151,11 @@ function SmartInternalLinkerSidebar() {
         setStatus( STATUS.APPLYING );
 
         try {
+            const applyContent = appliedContentRef.current || wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-                body: JSON.stringify( { post_id: postId, content: wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() ), accepted } ),
+                body: JSON.stringify( { post_id: postId, content: applyContent, accepted } ),
             } );
             const data = await res.json();
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
