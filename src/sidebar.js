@@ -253,14 +253,12 @@ function SmartInternalLinkerSidebar() {
                         </PanelRow>
                     ) }
 
-                    { /* Remove all links button */ }
-                    { ( status === STATUS.IDLE || status === STATUS.ERROR || status === STATUS.APPLIED || status === STATUS.DONE ) && (
-                        <PanelRow>
-                            <Button variant="tertiary" className="linkiya-remove-btn" onClick={ removeLinks } isDestructive>
-                                { __( 'Remove All Links', 'linkiya' ) }
-                            </Button>
-                        </PanelRow>
-                    ) }
+                    { /* Remove all links button — always visible */ }
+                    <PanelRow>
+                        <Button variant="secondary" className="linkiya-remove-btn" onClick={ removeLinks } isDestructive disabled={ status === STATUS.LOADING || status === STATUS.APPLYING }>
+                            { __( 'Remove All Links', 'linkiya' ) }
+                        </Button>
+                    </PanelRow>
 
                     { status === STATUS.LOADING && (
                         <PanelRow>
