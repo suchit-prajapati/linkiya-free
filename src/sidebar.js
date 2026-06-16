@@ -2,7 +2,7 @@ import './sidebar.css';
 import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar, PluginSidebarMoreMenuItem } from '@wordpress/edit-post';
 import { useSelect, useDispatch } from '@wordpress/data';
-import { useState, useEffect, useRef } from '@wordpress/element';
+import { useState, useEffect } from '@wordpress/element';
 import {
     Button, CheckboxControl, Spinner, Notice, PanelBody, PanelRow, TextControl,
 } from '@wordpress/components';
@@ -30,9 +30,8 @@ function SmartInternalLinkerSidebar() {
         postId:         select( 'core/editor' ).getCurrentPostId(),
         currentContent: select( 'core/editor' ).getEditedPostAttribute( 'content' ),
     } ) );
-    const { editPost }     = useDispatch( 'core/editor' );
-    const { resetBlocks }  = useDispatch( 'core/block-editor' );
-    const appliedContentRef = useRef( null );
+    const { editPost }    = useDispatch( 'core/editor' );
+    const { resetBlocks } = useDispatch( 'core/block-editor' );
 
     const isPro              = linkiyaData.isPro;
     const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
@@ -52,7 +51,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
     const fetchKeywordSuggestions = async () => {
-        const scanContent = appliedContentRef.current || currentContent;
+        const scanContent = wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -92,7 +91,6 @@ function SmartInternalLinkerSidebar() {
         setEditingAnchor( {} );
         setErrorMsg( '' );
         setAiLoading( aiEnabled );
-        appliedContentRef.current = null;
 
         try {
             // Run both in parallel — AI failure won't block keyword results
@@ -143,14 +141,13 @@ function SmartInternalLinkerSidebar() {
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-                body: JSON.stringify( { post_id: postId, content: appliedContentRef.current || currentContent, accepted } ),
+                body: JSON.stringify( { post_id: postId, content: wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' ), accepted } ),
             } );
             const data = await res.json();
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
 
             const blocks = wp.blocks.parse( data.new_content );
             await resetBlocks( blocks );
-            appliedContentRef.current = data.new_content;
             setAppliedCount( data.applied );
             setStatus( STATUS.APPLIED );
         } catch ( err ) {
