@@ -68,7 +68,9 @@ class Linkiya_Assets {
 			'linkiya_sidebar_data',
 			array(
 				'restUrl'    => esc_url_raw( rest_url( 'linkiya/v1' ) ),
+				'wpRestUrl'  => esc_url_raw( rest_url( 'wp/v2' ) ),
 				'nonce'      => wp_create_nonce( 'wp_rest' ),
+				'postId'     => get_the_ID(),
 				'isPro'      => false,
 				'adminUrl'   => esc_url_raw( admin_url() ),
 				'upgradeUrl' => 'https://www.mypluginstore.com/linkiya',

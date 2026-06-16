@@ -1,8 +1,8 @@
 import './sidebar.css';
 import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar, PluginSidebarMoreMenuItem } from '@wordpress/edit-post';
-import { useSelect, useDispatch } from '@wordpress/data';
-import { useState, useEffect, useRef } from '@wordpress/element';
+import { useDispatch } from '@wordpress/data';
+import { useState, useRef } from '@wordpress/element';
 import {
     Button, CheckboxControl, Spinner, Notice, PanelBody, PanelRow, TextControl,
 } from '@wordpress/components';
@@ -38,21 +38,27 @@ const adminUrl = ( page ) => {
 const suggKey = ( s ) => s.source === 'ai' ? `ai:${ s.post_id }` : s.keyword;
 
 function SmartInternalLinkerSidebar() {
-    const postId = useSelect( ( select ) => select( 'core/editor' ).getCurrentPostId() );
+    // postId comes from PHP via linkiyaData — no wp.data access needed.
+    const postId = linkiyaData.postId;
     const { resetBlocks } = useDispatch( 'core/block-editor' );
     const appliedContentRef = useRef( null );
 
-    // Get live editor content safely — serialize blocks from core/block-editor
-    // (same frame as sidebar). Never call core/editor.getEditedPostAttribute
-    // which crosses into the iframed canvas and is blocked by the browser.
-    const getLiveContent = () => {
+    // Fetch post content from WP REST API — avoids any cross-origin iframe access.
+    // Tries /posts/ first, falls back to /pages/ for page post type.
+    const getLiveContent = async () => {
         if ( appliedContentRef.current ) return appliedContentRef.current;
-        try {
-            const blocks = wp.data.select( 'core/block-editor' ).getBlocks();
-            return wp.blocks.serialize( blocks );
-        } catch ( e ) {
-            return '';
+        const headers = { 'X-WP-Nonce': linkiyaData.nonce };
+        for ( const type of [ 'posts', 'pages' ] ) {
+            const res = await fetch(
+                `${ linkiyaData.wpRestUrl }/${ type }/${ postId }?context=edit`,
+                { headers }
+            );
+            if ( res.ok ) {
+                const json = await res.json();
+                return json.content?.raw || '';
+            }
         }
+        return '';
     };
 
     const isPro              = linkiyaData.isPro;
@@ -73,7 +79,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
     const fetchKeywordSuggestions = async ( overrideContent = null ) => {
-        const scanContent = overrideContent || getLiveContent();
+        const scanContent = overrideContent || await getLiveContent();
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -90,7 +96,7 @@ function SmartInternalLinkerSidebar() {
     const fetchAiSuggestions = async () => {
         if ( ! aiEnabled || ! aiNonce || ! aiUrl ) return [];
 
-        const liveContent = getLiveContent();
+        const liveContent = await getLiveContent();
         const formData = new FormData();
         formData.append( 'action',   'linkiya_ai_suggest' );
         formData.append( 'nonce',    aiNonce );
@@ -172,7 +178,7 @@ function SmartInternalLinkerSidebar() {
         setStatus( STATUS.APPLYING );
 
         try {
-            const applyContent = getLiveContent();
+            const applyContent = await getLiveContent();
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -196,7 +202,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Remove all links ────────────────────────────────────────────── */
 
     const removeLinks = async () => {
-        const liveContent = getLiveContent();
+        const liveContent = await getLiveContent();
         // Strip all <a> tags but keep their inner text.
         const stripped = liveContent.replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
         const blocks = wp.blocks.parse( stripped );
