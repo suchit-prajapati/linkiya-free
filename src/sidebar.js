@@ -138,13 +138,13 @@ function SmartInternalLinkerSidebar() {
         const accepted = suggestions
             .filter( s => checked[ suggKey( s ) ] )
             .map( s => ( {
-                keyword:    s.keyword,
-                anchor:     anchorTexts[ suggKey( s ) ] || s.anchor || s.keyword,
-                post_id:    s.post_id,
-                post_title: s.post_title,
-                url:        s.url,
-                nofollow:   s.nofollow,
-                new_tab:    s.new_tab,
+                keyword:    String( s.keyword    || '' ),
+                anchor:     String( anchorTexts[ suggKey( s ) ] || s.anchor || s.keyword || '' ),
+                post_id:    Number( s.post_id    || 0 ),
+                post_title: String( s.post_title || '' ),
+                url:        String( s.url        || '' ),
+                nofollow:   !! s.nofollow,
+                new_tab:    !! s.new_tab,
             } ) );
 
         if ( ! accepted.length ) return;
@@ -175,7 +175,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Remove all links ────────────────────────────────────────────── */
 
     const removeLinks = async () => {
-        const liveContent = wp.blocks.serialize( wp.data.select( 'core/block-editor' ).getBlocks() );
+        const liveContent = appliedContentRef.current || wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
         // Strip all <a> tags but keep their inner text.
         const stripped = liveContent.replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
         const blocks = wp.blocks.parse( stripped );
