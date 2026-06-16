@@ -30,7 +30,8 @@ function SmartInternalLinkerSidebar() {
         postId:         select( 'core/editor' ).getCurrentPostId(),
         currentContent: select( 'core/editor' ).getEditedPostAttribute( 'content' ),
     } ) );
-    const { editPost } = useDispatch( 'core/editor' );
+    const { editPost }     = useDispatch( 'core/editor' );
+    const { resetBlocks }  = useDispatch( 'core/block-editor' );
 
     const isPro              = linkiyaData.isPro;
     const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
@@ -144,7 +145,8 @@ function SmartInternalLinkerSidebar() {
             const data = await res.json();
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
 
-            await editPost( { content: data.new_content } );
+            const blocks = wp.blocks.parse( data.new_content );
+            await resetBlocks( blocks );
             setAppliedCount( data.applied );
             setStatus( STATUS.APPLIED );
         } catch ( err ) {
