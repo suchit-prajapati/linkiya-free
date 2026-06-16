@@ -137,7 +137,15 @@ function SmartInternalLinkerSidebar() {
     const applyLinks = async () => {
         const accepted = suggestions
             .filter( s => checked[ suggKey( s ) ] )
-            .map( s => ( { ...s, anchor: anchorTexts[ suggKey( s ) ] || s.anchor || s.keyword } ) );
+            .map( s => ( {
+                keyword:    s.keyword,
+                anchor:     anchorTexts[ suggKey( s ) ] || s.anchor || s.keyword,
+                post_id:    s.post_id,
+                post_title: s.post_title,
+                url:        s.url,
+                nofollow:   s.nofollow,
+                new_tab:    s.new_tab,
+            } ) );
 
         if ( ! accepted.length ) return;
         setStatus( STATUS.APPLYING );
