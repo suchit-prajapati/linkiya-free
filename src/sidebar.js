@@ -31,7 +31,6 @@ function SmartInternalLinkerSidebar() {
         currentContent: select( 'core/editor' ).getEditedPostAttribute( 'content' ),
     } ) );
     const { editPost } = useDispatch( 'core/editor' );
-    const getContent = () => wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
 
     const isPro              = linkiyaData.isPro;
     const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
@@ -137,11 +136,10 @@ function SmartInternalLinkerSidebar() {
         setStatus( STATUS.APPLYING );
 
         try {
-            const liveContent = getContent();
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-                body: JSON.stringify( { post_id: postId, content: liveContent, accepted } ),
+                body: JSON.stringify( { post_id: postId, content: currentContent, accepted } ),
             } );
             const data = await res.json();
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
