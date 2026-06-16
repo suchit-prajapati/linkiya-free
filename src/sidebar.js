@@ -45,6 +45,8 @@ function SmartInternalLinkerSidebar() {
     const { editPost }      = useDispatch( 'core/editor' );
     const { resetBlocks }   = useDispatch( 'core/block-editor' );
     const appliedContentRef = useRef( null );
+    const currentContentRef = useRef( '' );
+    currentContentRef.current = currentContent || '';
 
     const isPro              = linkiyaData.isPro;
     const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
@@ -64,7 +66,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
     const fetchKeywordSuggestions = async ( overrideContent = null ) => {
-        const scanContent = overrideContent || appliedContentRef.current || wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
+        const scanContent = overrideContent || appliedContentRef.current || currentContentRef.current;
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -81,7 +83,7 @@ function SmartInternalLinkerSidebar() {
     const fetchAiSuggestions = async () => {
         if ( ! aiEnabled || ! aiNonce || ! aiUrl ) return [];
 
-        const liveContent = appliedContentRef.current || wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
+        const liveContent = appliedContentRef.current || currentContentRef.current;
         const formData = new FormData();
         formData.append( 'action',   'linkiya_ai_suggest' );
         formData.append( 'nonce',    aiNonce );
@@ -163,7 +165,7 @@ function SmartInternalLinkerSidebar() {
         setStatus( STATUS.APPLYING );
 
         try {
-            const applyContent = appliedContentRef.current || wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
+            const applyContent = appliedContentRef.current || currentContentRef.current;
             const res = await fetch( `${ linkiyaData.restUrl }/apply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
@@ -187,7 +189,7 @@ function SmartInternalLinkerSidebar() {
     /* ── Remove all links ────────────────────────────────────────────── */
 
     const removeLinks = async () => {
-        const liveContent = appliedContentRef.current || wp.data.select( 'core/editor' ).getEditedPostAttribute( 'content' );
+        const liveContent = appliedContentRef.current || currentContentRef.current;
         // Strip all <a> tags but keep their inner text.
         const stripped = liveContent.replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
         const blocks = wp.blocks.parse( stripped );
