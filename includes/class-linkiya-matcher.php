@@ -75,50 +75,73 @@ class Linkiya_Matcher {
 		// Strip all other HTML tags to get plain searchable text.
 		$plain_text = wp_strip_all_tags( $stripped );
 
-		$suggestions      = array();
-		$matched_keywords = array(); // O(1) set: keyword => true.
-		$matched_post_ids = array(); // O(1) set: post_id => true.
-
-		foreach ( $keyword_map as $entry ) {
+		// Flatten all keywords across all posts into a single list so we can
+		// match longest/most-specific phrases first, regardless of post order.
+		// Each item: [ keyword, entry_index ] so we can look up the entry later.
+		$all_candidates = array();
+		foreach ( $keyword_map as $idx => $entry ) {
 			if ( empty( $entry['post_id'] ) || empty( $entry['keywords'] ) || ! is_array( $entry['keywords'] ) ) {
 				continue;
 			}
 			$entry_id = (int) $entry['post_id'];
-
-			if ( $entry_id > 0 && isset( $matched_post_ids[ $entry_id ] ) ) {
-				continue;
-			}
-
-			// Skip posts already linked — check meta first (most reliable), then content scan.
 			if ( $entry_id > 0 && ( isset( $meta_applied_ids[ $entry_id ] ) || isset( $already_linked_ids[ $entry_id ] ) ) ) {
 				continue;
 			}
-
-			// Keywords are already sorted longest-first by the extractor.
 			foreach ( $entry['keywords'] as $keyword ) {
-				if ( isset( $matched_keywords[ $keyword ] ) ) {
-					continue; // Keyword already used for another post.
-				}
+				$all_candidates[] = array( $keyword, $idx );
+			}
+		}
 
-				// Skip if this keyword is already used as anchor text in an existing link.
-				if ( isset( $already_linked_texts[ strtolower( $keyword ) ] ) ) {
-					continue;
+		// Sort all candidates: no-digit phrases first, then by word count desc, then length desc.
+		usort(
+			$all_candidates,
+			static function ( $a, $b ) {
+				$a_kw        = $a[0];
+				$b_kw        = $b[0];
+				$a_has_digit = (int) preg_match( '/\d/', $a_kw );
+				$b_has_digit = (int) preg_match( '/\d/', $b_kw );
+				if ( $a_has_digit !== $b_has_digit ) {
+					return $a_has_digit - $b_has_digit;
 				}
+				$a_words = substr_count( $a_kw, ' ' ) + 1;
+				$b_words = substr_count( $b_kw, ' ' ) + 1;
+				if ( $a_words !== $b_words ) {
+					return $b_words - $a_words;
+				}
+				return strlen( $b_kw ) - strlen( $a_kw );
+			}
+		);
 
-				if ( self::keyword_exists_in_text( $keyword, $plain_text ) ) {
-					$suggestions[]                 = array(
-						'keyword'    => $keyword,
-						'post_id'    => $entry['post_id'],
-						'post_title' => $entry['title'],
-						'post_type'  => $entry['post_type'] ?? 'post',
-						'url'        => $entry['url'],
-						'nofollow'   => ! empty( $entry['nofollow'] ),
-						'new_tab'    => ! empty( $entry['new_tab'] ),
-					);
-					$matched_keywords[ $keyword ]  = true;
-					$matched_post_ids[ $entry_id ] = true;
-					break; // One keyword per post is enough.
-				}
+		$suggestions      = array();
+		$matched_keywords = array();
+		$matched_post_ids = array();
+
+		foreach ( $all_candidates as list( $keyword, $idx ) ) {
+			$entry    = $keyword_map[ $idx ];
+			$entry_id = (int) $entry['post_id'];
+
+			if ( isset( $matched_post_ids[ $entry_id ] ) ) {
+				continue; // Already found a match for this post.
+			}
+			if ( isset( $matched_keywords[ $keyword ] ) ) {
+				continue; // Keyword already claimed by another post.
+			}
+			if ( isset( $already_linked_texts[ strtolower( $keyword ) ] ) ) {
+				continue;
+			}
+
+			if ( self::keyword_exists_in_text( $keyword, $plain_text ) ) {
+				$suggestions[]                 = array(
+					'keyword'    => $keyword,
+					'post_id'    => $entry['post_id'],
+					'post_title' => $entry['title'],
+					'post_type'  => $entry['post_type'] ?? 'post',
+					'url'        => $entry['url'],
+					'nofollow'   => ! empty( $entry['nofollow'] ),
+					'new_tab'    => ! empty( $entry['new_tab'] ),
+				);
+				$matched_keywords[ $keyword ]  = true;
+				$matched_post_ids[ $entry_id ] = true;
 			}
 		}
 
