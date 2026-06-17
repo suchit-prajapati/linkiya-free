@@ -29,7 +29,6 @@ function LinkiyaSidebar() {
     // postId comes from PHP — zero wp.data / iframe access.
     const postId = linkiyaData.postId;
 
-    const isPro              = linkiyaData.isPro;
     const aiEnabled          = !! linkiyaData.ai_suggestions_enabled;
     const aiNonce            = linkiyaData.ai_suggest_nonce || '';
     const aiUrl              = linkiyaData.ai_suggest_url  || '';
@@ -41,7 +40,6 @@ function LinkiyaSidebar() {
     const [editingAnchor, setEditingAnchor] = useState( {} );
     const [errorMsg,      setErrorMsg]      = useState( '' );
     const [appliedCount,  setAppliedCount]  = useState( 0 );
-    const [orphanCount,   setOrphanCount]   = useState( null );
     const [aiLoading,     setAiLoading]     = useState( false );
 
     /* ── Keyword scan ─────────────────────────────────────────────── */
@@ -214,28 +212,10 @@ function LinkiyaSidebar() {
         <>
             <PluginSidebarMoreMenuItem target="linkiya-sidebar">
                 { __( 'Linkiya', 'linkiya' ) }
-                { isPro && <span className="linkiya-pro-menu-badge">PRO</span> }
             </PluginSidebarMoreMenuItem>
 
             <PluginSidebar name="linkiya-sidebar" title={ __( 'Linkiya', 'linkiya' ) } icon={ ICON }>
                 <PanelBody>
-
-                    { /* Pro / Free banner */ }
-                    { isPro ? (
-                        <PanelRow>
-                            <div className="linkiya-pro-badge">⚡ { __( 'Pro — All features active', 'linkiya' ) }</div>
-                        </PanelRow>
-                    ) : (
-                        <PanelRow>
-                            <div className="linkiya-free-banner">
-                                { __( 'Free version — scanning Posts & Pages only.', 'linkiya' ) }
-                                { ' ' }
-                                <a href={ linkiyaData.upgradeUrl } target="_blank" rel="noreferrer">
-                                    { __( 'Upgrade to Pro →', 'linkiya' ) }
-                                </a>
-                            </div>
-                        </PanelRow>
-                    ) }
 
                     <PanelRow>
                         <p className="linkiya-intro">
@@ -247,24 +227,6 @@ function LinkiyaSidebar() {
                             ) }
                         </p>
                     </PanelRow>
-
-                    { /* Orphan count teaser */ }
-                    { orphanCount !== null && orphanCount > 0 && (
-                        <PanelRow>
-                            <div className="linkiya-orphan-teaser">
-                                <span className="linkiya-orphan-count">⚠️ { orphanCount }</span>
-                                { ' ' + __( 'orphaned posts found', 'linkiya' ) + ' ' }
-                                <a
-                                    href={ isPro ? adminUrl( 'linkiya-orphans' ) : linkiyaData.upgradeUrl }
-                                    className="linkiya-orphan-link"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    { isPro ? __( 'Fix them →', 'linkiya' ) : __( 'Upgrade to Pro →', 'linkiya' ) }
-                                </a>
-                            </div>
-                        </PanelRow>
-                    ) }
 
                     { /* Run button */ }
                     { ( status === STATUS.IDLE || status === STATUS.ERROR || status === STATUS.APPLIED ) && (
