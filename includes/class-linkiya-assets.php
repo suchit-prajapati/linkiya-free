@@ -64,10 +64,11 @@ class Linkiya_Assets {
 		 *
 		 * @param array $sidebar_data Sidebar data passed to JavaScript.
 		 */
-		$post_id   = (int) ( get_the_ID() ? get_the_ID() : get_queried_object_id() );
-		$post_type = get_post_type( $post_id ) ?: 'post';
+		$post_id       = (int) ( get_the_ID() ? get_the_ID() : get_queried_object_id() );
+		$post_type     = get_post_type( $post_id );
+		$post_type     = $post_type ? $post_type : 'post';
 		$post_type_obj = get_post_type_object( $post_type );
-		$rest_base = $post_type_obj && $post_type_obj->rest_base ? $post_type_obj->rest_base : 'posts';
+		$rest_base     = ( $post_type_obj && $post_type_obj->rest_base ) ? $post_type_obj->rest_base : 'posts';
 
 		$sidebar_data = apply_filters(
 			'linkiya_sidebar_data',

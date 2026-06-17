@@ -39,14 +39,14 @@ class Linkiya_Settings {
 	 */
 	public static function get_defaults(): array {
 		return array(
-			'min_word_length'    => 4,
-			'max_links_per_post' => 5,
-			'link_target'        => '_self',
-			'link_rel'           => '',
-			'excluded_post_ids'        => '',
-			'stop_words'               => '',
-			'suggest_pages_on_posts'   => '1',
-			'suggest_posts_on_pages'   => '1',
+			'min_word_length'        => 4,
+			'max_links_per_post'     => 5,
+			'link_target'            => '_self',
+			'link_rel'               => '',
+			'excluded_post_ids'      => '',
+			'stop_words'             => '',
+			'suggest_pages_on_posts' => '1',
+			'suggest_posts_on_pages' => '1',
 		);
 	}
 
@@ -117,16 +117,16 @@ class Linkiya_Settings {
 		$raw = isset( $_POST['linkiya_settings'] ) ? wp_unslash( $_POST['linkiya_settings'] ) : array();
 
 		$clean = array(
-			'min_word_length'    => absint( $raw['min_word_length'] ?? 4 ),
-			'max_links_per_post' => absint( $raw['max_links_per_post'] ?? 5 ),
-			'link_target'        => in_array( $raw['link_target'] ?? '', array( '_self', '_blank' ), true )
+			'min_word_length'        => absint( $raw['min_word_length'] ?? 4 ),
+			'max_links_per_post'     => absint( $raw['max_links_per_post'] ?? 5 ),
+			'link_target'            => in_array( $raw['link_target'] ?? '', array( '_self', '_blank' ), true )
 										? sanitize_text_field( $raw['link_target'] )
 										: '_self',
-			'link_rel'           => sanitize_text_field( $raw['link_rel'] ?? '' ),
-			'excluded_post_ids'        => sanitize_textarea_field( $raw['excluded_post_ids'] ?? '' ),
-			'stop_words'               => sanitize_textarea_field( $raw['stop_words'] ?? '' ),
-			'suggest_pages_on_posts'   => isset( $raw['suggest_pages_on_posts'] ) ? '1' : '0',
-			'suggest_posts_on_pages'   => isset( $raw['suggest_posts_on_pages'] ) ? '1' : '0',
+			'link_rel'               => sanitize_text_field( $raw['link_rel'] ?? '' ),
+			'excluded_post_ids'      => sanitize_textarea_field( $raw['excluded_post_ids'] ?? '' ),
+			'stop_words'             => sanitize_textarea_field( $raw['stop_words'] ?? '' ),
+			'suggest_pages_on_posts' => isset( $raw['suggest_pages_on_posts'] ) ? '1' : '0',
+			'suggest_posts_on_pages' => isset( $raw['suggest_posts_on_pages'] ) ? '1' : '0',
 		);
 
 		// Allow Pro plugin to save its own settings fields — pass sanitized $clean, not raw input.
@@ -276,16 +276,16 @@ class Linkiya_Settings {
 
 		// Re-use the same validation logic as handle_save() so types are enforced.
 		$clean = array(
-			'min_word_length'    => absint( $decoded['min_word_length'] ?? 4 ),
-			'max_links_per_post' => absint( $decoded['max_links_per_post'] ?? 5 ),
-			'link_target'        => in_array( $decoded['link_target'] ?? '', array( '_self', '_blank' ), true )
+			'min_word_length'        => absint( $decoded['min_word_length'] ?? 4 ),
+			'max_links_per_post'     => absint( $decoded['max_links_per_post'] ?? 5 ),
+			'link_target'            => in_array( $decoded['link_target'] ?? '', array( '_self', '_blank' ), true )
 										? $decoded['link_target']
 										: '_self',
-			'link_rel'           => sanitize_text_field( $decoded['link_rel'] ?? '' ),
-			'excluded_post_ids'        => sanitize_textarea_field( $decoded['excluded_post_ids'] ?? '' ),
-			'stop_words'               => sanitize_textarea_field( $decoded['stop_words'] ?? '' ),
-			'suggest_pages_on_posts'   => isset( $decoded['suggest_pages_on_posts'] ) && $decoded['suggest_pages_on_posts'] ? '1' : '0',
-			'suggest_posts_on_pages'   => isset( $decoded['suggest_posts_on_pages'] ) && $decoded['suggest_posts_on_pages'] ? '1' : '0',
+			'link_rel'               => sanitize_text_field( $decoded['link_rel'] ?? '' ),
+			'excluded_post_ids'      => sanitize_textarea_field( $decoded['excluded_post_ids'] ?? '' ),
+			'stop_words'             => sanitize_textarea_field( $decoded['stop_words'] ?? '' ),
+			'suggest_pages_on_posts' => isset( $decoded['suggest_pages_on_posts'] ) && $decoded['suggest_pages_on_posts'] ? '1' : '0',
+			'suggest_posts_on_pages' => isset( $decoded['suggest_posts_on_pages'] ) && $decoded['suggest_posts_on_pages'] ? '1' : '0',
 		);
 		$clean = apply_filters( 'linkiya_import_settings', $clean, $decoded );
 

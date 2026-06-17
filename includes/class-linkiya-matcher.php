@@ -19,8 +19,9 @@ class Linkiya_Matcher {
 	/**
 	 * Run the matching engine.
 	 *
-	 * @param  string $content     Raw post content (HTML from Gutenberg blocks).
-	 * @param  array  $keyword_map Output of Linkiya_Keyword_Extractor::get_keyword_map().
+	 * @param  string $content          Raw post content (HTML from Gutenberg blocks).
+	 * @param  array  $keyword_map      Output of Linkiya_Keyword_Extractor::get_keyword_map().
+	 * @param  array  $meta_applied_ids Post IDs already linked, keyed by post ID.
 	 * @return array  Suggestions: [
 	 *   [
 	 *     'keyword'    => string,
@@ -59,7 +60,7 @@ class Linkiya_Matcher {
 		if ( preg_match_all( '/<a\b[^>]*>(.*?)<\/a>/is', $content, $anchor_matches ) ) {
 			foreach ( $anchor_matches[1] as $anchor_html ) {
 				$text = strtolower( trim( wp_strip_all_tags( $anchor_html ) ) );
-				if ( $text !== '' ) {
+				if ( '' !== $text ) {
 					$already_linked_texts[ $text ] = true;
 				}
 			}

@@ -19,7 +19,11 @@ class Linkiya_Keyword_Extractor {
 	const CACHE_KEY    = 'linkiya_keyword_map';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
-	/** @var array<string,int>|null Runtime-cached stop word map. */
+	/**
+	 * Runtime-cached stop word map.
+	 *
+	 * @var array<string,int>|null
+	 */
 	private static $stop_words_cache = null;
 
 	/**
@@ -176,8 +180,8 @@ class Linkiya_Keyword_Extractor {
 
 		// Pass 1 — extract raw candidates for every post and build a global
 		// document-frequency (DF) index: keyword => number of posts it appears in.
-		$raw       = array(); // post_id => candidate keywords array.
-		$df_index  = array(); // keyword => count of posts.
+		$raw      = array(); // post_id => candidate keywords array.
+		$df_index = array(); // keyword => count of posts.
 
 		foreach ( $posts as $post ) {
 			$candidates = self::extract_keywords( $post->post_title );
@@ -213,11 +217,9 @@ class Linkiya_Keyword_Extractor {
 					if ( $df <= 3 ) {
 						$filtered[] = $kw;
 					}
-				} else {
+				} elseif ( $df <= 2 && strlen( $kw ) >= $min_len ) {
 					// Single words: DF <= 2 and respects user's min word length setting.
-					if ( $df <= 2 && strlen( $kw ) >= $min_len ) {
-						$filtered[] = $kw;
-					}
+					$filtered[] = $kw;
 				}
 			}
 
