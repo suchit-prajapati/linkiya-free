@@ -44,6 +44,7 @@ class Linkiya_Settings {
 			'link_target'        => '_self',
 			'link_rel'           => '',
 			'excluded_post_ids'  => '',
+			'stop_words'         => '',
 		);
 	}
 
@@ -121,12 +122,14 @@ class Linkiya_Settings {
 										: '_self',
 			'link_rel'           => sanitize_text_field( $raw['link_rel'] ?? '' ),
 			'excluded_post_ids'  => sanitize_textarea_field( $raw['excluded_post_ids'] ?? '' ),
+			'stop_words'         => sanitize_textarea_field( $raw['stop_words'] ?? '' ),
 		);
 
 		// Allow Pro plugin to save its own settings fields — pass sanitized $clean, not raw input.
 		$clean = apply_filters( 'linkiya_save_settings', $clean, $clean );
 
 		update_option( self::OPTION_KEY, $clean );
+		Linkiya_Keyword_Extractor::flush_stop_words_cache();
 
 		wp_safe_redirect(
 			add_query_arg(
@@ -276,6 +279,7 @@ class Linkiya_Settings {
 										: '_self',
 			'link_rel'           => sanitize_text_field( $decoded['link_rel'] ?? '' ),
 			'excluded_post_ids'  => sanitize_textarea_field( $decoded['excluded_post_ids'] ?? '' ),
+			'stop_words'         => sanitize_textarea_field( $decoded['stop_words'] ?? '' ),
 		);
 		$clean = apply_filters( 'linkiya_import_settings', $clean, $decoded );
 

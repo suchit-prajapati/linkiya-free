@@ -104,6 +104,20 @@ defined( 'ABSPATH' ) || exit;
 				</td>
 			</tr>
 
+			<!-- Stop words -->
+			<tr>
+				<th scope="row">
+					<label for="linkiya_stop_words"><?php esc_html_e( 'Stop Words', 'linkiya' ); ?></label>
+				</th>
+				<td>
+					<textarea id="linkiya_stop_words"
+						name="linkiya_settings[stop_words]"
+						rows="8" class="large-text"
+						placeholder="<?php esc_attr_e( "e.g.\nlife\nself\nways\ntips", 'linkiya' ); ?>"><?php echo esc_textarea( $settings['stop_words'] ?? '' ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Words added here will never be used as link anchor text. One word per line. Case-insensitive.', 'linkiya' ); ?></p>
+				</td>
+			</tr>
+
 		</table>
 
 		<?php
