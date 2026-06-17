@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Linkiya_Keyword_Extractor {
 
-	const CACHE_KEY    = 'linkiya_keyword_map';
+	const CACHE_KEY    = 'linkiya_keyword_map_v2';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
 	/**
@@ -228,8 +228,25 @@ class Linkiya_Keyword_Extractor {
 				continue;
 			}
 
-			// Sort: longest first (phrases naturally bubble up), then cap at 5.
-			usort( $filtered, fn( $a, $b ) => strlen( $b ) - strlen( $a ) );
+			// Sort: phrases without digits beat those with digits (digit-heavy n-grams like
+			// "11 practical techniques" are too specific to match real content), then by
+			// word count descending, then by length as a tiebreaker.
+			usort(
+				$filtered,
+				static function ( $a, $b ) {
+					$a_has_digit = (int) preg_match( '/\d/', $a );
+					$b_has_digit = (int) preg_match( '/\d/', $b );
+					if ( $a_has_digit !== $b_has_digit ) {
+						return $a_has_digit - $b_has_digit; // no-digit first.
+					}
+					$a_words = substr_count( $a, ' ' ) + 1;
+					$b_words = substr_count( $b, ' ' ) + 1;
+					if ( $a_words !== $b_words ) {
+						return $b_words - $a_words; // more words first.
+					}
+					return strlen( $b ) - strlen( $a );
+				}
+			);
 			$filtered = array_slice( $filtered, 0, 5 );
 
 			$map[] = array(
