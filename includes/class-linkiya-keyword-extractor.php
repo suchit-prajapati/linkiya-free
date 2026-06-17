@@ -213,13 +213,17 @@ class Linkiya_Keyword_Extractor {
 				$is_multi = strpos( $kw, ' ' ) !== false;
 
 				if ( $is_multi ) {
-					// Phrases: allow DF <= 3 — multi-word phrases are inherently specific.
-					if ( $df <= 3 ) {
+					// Phrases: allow up to 20% of total posts — common on niche sites.
+					$df_limit = max( 5, (int) round( count( $posts ) * 0.2 ) );
+					if ( $df <= $df_limit ) {
 						$filtered[] = $kw;
 					}
-				} elseif ( $df <= 2 && strlen( $kw ) >= $min_len ) {
-					// Single words: DF <= 2 and respects user's min word length setting.
-					$filtered[] = $kw;
+				} elseif ( strlen( $kw ) >= $min_len ) {
+					// Single words: allow up to 10% of total posts.
+					$df_limit = max( 3, (int) round( count( $posts ) * 0.1 ) );
+					if ( $df <= $df_limit ) {
+						$filtered[] = $kw;
+					}
 				}
 			}
 
