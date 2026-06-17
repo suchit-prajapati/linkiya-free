@@ -25,7 +25,7 @@ const adminUrl = ( page ) => {
 // Unique key per suggestion — keyword suggestions use keyword, AI suggestions use "ai:{post_id}"
 const suggKey = ( s ) => s.source === 'ai' ? `ai:${ s.post_id }` : s.keyword;
 
-function SmartInternalLinkerSidebar() {
+function LinkiyaSidebar() {
     // postId comes from PHP — zero wp.data / iframe access.
     const postId = linkiyaData.postId;
 
@@ -453,4 +453,4 @@ function SmartInternalLinkerSidebar() {
     );
 }
 
-registerPlugin( 'linkiya', { render: SmartInternalLinkerSidebar, icon: ICON } );
+registerPlugin( 'linkiya', { render: LinkiyaSidebar, icon: ICON } );
