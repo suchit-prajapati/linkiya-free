@@ -147,7 +147,7 @@ function LinkiyaSidebar() {
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
 
             // Save new content to post via WP REST API, then reload so editor reflects it.
-            await fetch( `${ linkiyaData.wpRestUrl }/posts/${ postId }`, {
+            await fetch( `${ linkiyaData.wpRestUrl }/${ linkiyaData.restBase }/${ postId }`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
                 body: JSON.stringify( { content: data.new_content } ),
@@ -168,14 +168,14 @@ function LinkiyaSidebar() {
         try {
             // Fetch current post content from DB, strip links, save back.
             const getRes = await fetch(
-                `${ linkiyaData.wpRestUrl }/posts/${ postId }?context=edit`,
+                `${ linkiyaData.wpRestUrl }/${ linkiyaData.restBase }/${ postId }?context=edit`,
                 { headers: { 'X-WP-Nonce': linkiyaData.nonce } }
             );
             if ( ! getRes.ok ) throw new Error( __( 'Failed to fetch post content.', 'linkiya' ) );
             const post = await getRes.json();
             const stripped = ( post.content?.raw || '' ).replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
 
-            await fetch( `${ linkiyaData.wpRestUrl }/posts/${ postId }`, {
+            await fetch( `${ linkiyaData.wpRestUrl }/${ linkiyaData.restBase }/${ postId }`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
                 body: JSON.stringify( { content: stripped } ),
