@@ -249,7 +249,17 @@ class Linkiya_REST_API {
 		$suggestions = Linkiya_Matcher::find_suggestions( $content, $keyword_map, $applied_ids );
 
 		// Max links — free setting.
-		$settings = Linkiya_Settings::get();
+		$settings        = Linkiya_Settings::get();
+		$current_type    = get_post_type( $post_id ) ?: 'post';
+		$show_pages      = ! empty( $settings['suggest_pages_on_posts'] );
+		$show_posts      = ! empty( $settings['suggest_posts_on_pages'] );
+
+		// Filter suggestions based on cross-type toggles.
+		if ( 'post' === $current_type && ! $show_pages ) {
+			$suggestions = array_values( array_filter( $suggestions, fn( $s ) => ( $s['post_type'] ?? '' ) !== 'page' ) );
+		} elseif ( 'page' === $current_type && ! $show_posts ) {
+			$suggestions = array_values( array_filter( $suggestions, fn( $s ) => ( $s['post_type'] ?? '' ) !== 'post' ) );
+		}
 		$max      = (int) ( $settings['max_links_per_post'] ?? 5 );
 		if ( $max > 0 ) {
 			$suggestions = array_slice( $suggestions, 0, $max );

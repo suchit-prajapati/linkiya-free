@@ -104,6 +104,32 @@ defined( 'ABSPATH' ) || exit;
 				</td>
 			</tr>
 
+			<!-- Suggest pages on posts -->
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Suggest Pages on Posts', 'linkiya' ); ?></th>
+				<td>
+					<label>
+						<input type="checkbox" name="linkiya_settings[suggest_pages_on_posts]" value="1"
+							<?php checked( $settings['suggest_pages_on_posts'] ?? '1', '1' ); ?>>
+						<?php esc_html_e( 'Include Pages as link targets when editing a Post', 'linkiya' ); ?>
+					</label>
+					<p class="description"><?php esc_html_e( 'Disable this to avoid linking to About, Editorial, or other static pages from your posts.', 'linkiya' ); ?></p>
+				</td>
+			</tr>
+
+			<!-- Suggest posts on pages -->
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Suggest Posts on Pages', 'linkiya' ); ?></th>
+				<td>
+					<label>
+						<input type="checkbox" name="linkiya_settings[suggest_posts_on_pages]" value="1"
+							<?php checked( $settings['suggest_posts_on_pages'] ?? '1', '1' ); ?>>
+						<?php esc_html_e( 'Include Posts as link targets when editing a Page', 'linkiya' ); ?>
+					</label>
+					<p class="description"><?php esc_html_e( 'Disable this to prevent blog posts from being suggested inside static pages.', 'linkiya' ); ?></p>
+				</td>
+			</tr>
+
 			<!-- Stop words -->
 			<tr>
 				<th scope="row">

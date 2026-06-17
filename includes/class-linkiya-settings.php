@@ -43,8 +43,10 @@ class Linkiya_Settings {
 			'max_links_per_post' => 5,
 			'link_target'        => '_self',
 			'link_rel'           => '',
-			'excluded_post_ids'  => '',
-			'stop_words'         => '',
+			'excluded_post_ids'        => '',
+			'stop_words'               => '',
+			'suggest_pages_on_posts'   => '1',
+			'suggest_posts_on_pages'   => '1',
 		);
 	}
 
@@ -121,8 +123,10 @@ class Linkiya_Settings {
 										? sanitize_text_field( $raw['link_target'] )
 										: '_self',
 			'link_rel'           => sanitize_text_field( $raw['link_rel'] ?? '' ),
-			'excluded_post_ids'  => sanitize_textarea_field( $raw['excluded_post_ids'] ?? '' ),
-			'stop_words'         => sanitize_textarea_field( $raw['stop_words'] ?? '' ),
+			'excluded_post_ids'        => sanitize_textarea_field( $raw['excluded_post_ids'] ?? '' ),
+			'stop_words'               => sanitize_textarea_field( $raw['stop_words'] ?? '' ),
+			'suggest_pages_on_posts'   => isset( $raw['suggest_pages_on_posts'] ) ? '1' : '0',
+			'suggest_posts_on_pages'   => isset( $raw['suggest_posts_on_pages'] ) ? '1' : '0',
 		);
 
 		// Allow Pro plugin to save its own settings fields — pass sanitized $clean, not raw input.
@@ -278,8 +282,10 @@ class Linkiya_Settings {
 										? $decoded['link_target']
 										: '_self',
 			'link_rel'           => sanitize_text_field( $decoded['link_rel'] ?? '' ),
-			'excluded_post_ids'  => sanitize_textarea_field( $decoded['excluded_post_ids'] ?? '' ),
-			'stop_words'         => sanitize_textarea_field( $decoded['stop_words'] ?? '' ),
+			'excluded_post_ids'        => sanitize_textarea_field( $decoded['excluded_post_ids'] ?? '' ),
+			'stop_words'               => sanitize_textarea_field( $decoded['stop_words'] ?? '' ),
+			'suggest_pages_on_posts'   => isset( $decoded['suggest_pages_on_posts'] ) && $decoded['suggest_pages_on_posts'] ? '1' : '0',
+			'suggest_posts_on_pages'   => isset( $decoded['suggest_posts_on_pages'] ) && $decoded['suggest_posts_on_pages'] ? '1' : '0',
 		);
 		$clean = apply_filters( 'linkiya_import_settings', $clean, $decoded );
 
