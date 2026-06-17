@@ -134,6 +134,7 @@ class Linkiya_Settings {
 
 		update_option( self::OPTION_KEY, $clean );
 		Linkiya_Keyword_Extractor::flush_stop_words_cache();
+		Linkiya_Keyword_Extractor::invalidate_cache();
 
 		wp_safe_redirect(
 			add_query_arg(
@@ -290,6 +291,8 @@ class Linkiya_Settings {
 		$clean = apply_filters( 'linkiya_import_settings', $clean, $decoded );
 
 		update_option( self::OPTION_KEY, $clean );
+		Linkiya_Keyword_Extractor::flush_stop_words_cache();
+		Linkiya_Keyword_Extractor::invalidate_cache();
 
 		wp_safe_redirect(
 			add_query_arg(
