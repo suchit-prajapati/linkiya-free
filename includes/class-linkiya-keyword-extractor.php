@@ -157,7 +157,7 @@ class Linkiya_Keyword_Extractor {
 		'habit'        => 1, 'habits'      => 1, 'routine'     => 1, 'routines'    => 1,
 		'benefit'      => 1, 'benefits'    => 1, 'advantage'   => 1, 'disadvantage'=> 1,
 		'relation'     => 1, 'relations'   => 1, 'connection'  => 1, 'connections' => 1,
-		'conversation' => 1, 'conversations'=> 1,'communication'=> 1,'interaction' => 1,
+		'interaction'  => 1,
 		'awareness'    => 1, 'knowledge'   => 1, 'learning'    => 1, 'teaching'    => 1,
 		'training'     => 1, 'coaching'    => 1, 'therapy'     => 1, 'treatment'   => 1,
 		'condition'    => 1, 'conditions'  => 1, 'disorder'    => 1, 'symptoms'    => 1,
