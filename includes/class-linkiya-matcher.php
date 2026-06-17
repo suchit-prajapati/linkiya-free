@@ -214,11 +214,16 @@ class Linkiya_Matcher {
 		foreach ( $parts as $part ) {
 			if ( ! $linked && ! preg_match( '/^<a\b/i', $part ) && ! preg_match( '/^<h[1-6]\b/i', $part ) ) {
 				$escaped = preg_quote( $keyword, '/' );
-				// Replace keyword with custom anchor text if different.
-				$link_text = ( $anchor !== $keyword ) ? esc_html( $anchor ) : '$1';
-				$new_part  = preg_replace(
+				// Use preg_replace_callback to avoid backreference interpretation in anchor text.
+				$link_text  = ( $anchor !== $keyword ) ? esc_html( $anchor ) : null;
+				$link_open  = '<a ' . $attrs . '>';
+				$link_close = '</a>';
+				$count      = 0;
+				$new_part   = preg_replace_callback(
 					'/\b(' . $escaped . ')\b/iu',
-					'<a ' . $attrs . '>' . $link_text . '</a>',
+					static function ( $matches ) use ( $link_open, $link_close, $link_text ) {
+						return $link_open . ( null !== $link_text ? $link_text : esc_html( $matches[1] ) ) . $link_close;
+					},
 					$part,
 					1,
 					$count
