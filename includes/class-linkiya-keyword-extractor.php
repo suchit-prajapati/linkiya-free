@@ -142,6 +142,32 @@ class Linkiya_Keyword_Extractor {
 		'summary'      => 1, 'complete'    => 1, 'ultimate'    => 1, 'definitive'  => 1,
 		'explained'    => 1, 'everything'  => 1, 'know'        => 1, 'need'        => 1,
 		'recommendations' => 1, 'editorial' => 1, 'commitment' => 1, 'affiliate'   => 1,
+		// Generic words that slip through length filter.
+		'setting'      => 1, 'settings'    => 1, 'problems'    => 1, 'problem'     => 1,
+		'worrying'     => 1, 'matters'     => 1, 'realistic'   => 1, 'relaxation'  => 1,
+		'triggers'     => 1, 'trigger'     => 1, 'meaningful'  => 1, 'challenge'   => 1,
+		'challenges'   => 1, 'wellbeing'   => 1, 'wellness'    => 1, 'feeling'     => 1,
+		'feelings'     => 1, 'emotions'    => 1, 'emotion'     => 1, 'thinking'    => 1,
+		'thoughts'     => 1, 'thought'     => 1, 'behavior'    => 1, 'behaviour'   => 1,
+		'response'     => 1, 'responses'   => 1, 'reaction'    => 1, 'reactions'   => 1,
+		'situation'    => 1, 'situations'  => 1, 'experience'  => 1, 'experiences' => 1,
+		'activity'     => 1, 'activities'  => 1, 'exercise'    => 1, 'exercises'   => 1,
+		'practice'     => 1, 'practices'   => 1, 'technique'   => 1, 'techniques'  => 1,
+		'strategy'     => 1, 'strategies'  => 1, 'skill'       => 1, 'skills'      => 1,
+		'habit'        => 1, 'habits'      => 1, 'routine'     => 1, 'routines'    => 1,
+		'benefit'      => 1, 'benefits'    => 1, 'advantage'   => 1, 'disadvantage'=> 1,
+		'relation'     => 1, 'relations'   => 1, 'connection'  => 1, 'connections' => 1,
+		'conversation' => 1, 'conversations'=> 1,'communication'=> 1,'interaction' => 1,
+		'awareness'    => 1, 'knowledge'   => 1, 'learning'    => 1, 'teaching'    => 1,
+		'training'     => 1, 'coaching'    => 1, 'therapy'     => 1, 'treatment'   => 1,
+		'condition'    => 1, 'conditions'  => 1, 'disorder'    => 1, 'symptoms'    => 1,
+		'recovery'     => 1, 'healing'     => 1, 'prevention'  => 1, 'protection'  => 1,
+		'potential'    => 1, 'capacity'    => 1, 'ability'     => 1, 'abilities'   => 1,
+		'quality'      => 1, 'standard'    => 1, 'value'       => 1, 'values'      => 1,
+		'principle'    => 1, 'principles'  => 1, 'concept'     => 1, 'concepts'    => 1,
+		'foundation'   => 1, 'framework'   => 1, 'structure'   => 1, 'model'       => 1,
+		'research'     => 1, 'studies'     => 1, 'science'     => 1, 'evidence'    => 1,
+		'inspiring'    => 1, 'motivated'   => 1, 'motivation'  => 1, 'inspiration' => 1,
 		// Hindi romanized.
 		'kya'          => 1, 'kaise'       => 1, 'kyun'        => 1, 'aur'         => 1,
 		'hai'          => 1, 'hain'        => 1, 'ka'          => 1, 'ki'          => 1,
@@ -316,7 +342,8 @@ class Linkiya_Keyword_Extractor {
 						$filtered[] = $kw;
 					}
 				} else {
-					if ( $df === 1 && strlen( $kw ) >= 7 ) {
+					// Single words: must be unique (DF=1) and at least 8 chars to avoid generic words.
+					if ( $df === 1 && strlen( $kw ) >= 8 ) {
 						$filtered[] = $kw;
 					}
 				}
@@ -352,7 +379,8 @@ class Linkiya_Keyword_Extractor {
 	public static function extract_keywords( string $title ): array {
 		$min_len = self::get_min_word_len();
 
-		$clean  = strtolower( preg_replace( '/[^\w\s]/u', ' ', $title ) );
+		// Replace hyphens with nothing so "Well-Being" → "wellbeing" (one token, not two).
+		$clean  = strtolower( preg_replace( '/[^\w\s]/u', ' ', str_replace( '-', '', $title ) ) );
 		$tokens = preg_split( '/\s+/', trim( $clean ), -1, PREG_SPLIT_NO_EMPTY );
 
 		$keywords    = array();
