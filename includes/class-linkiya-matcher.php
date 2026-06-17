@@ -151,14 +151,37 @@ class Linkiya_Matcher {
 		usort( $scored, fn( $a, $b ) => $b['score'] <=> $a['score'] );
 
 		// Deduplicate: one suggestion per keyword string across all posts.
+		// Also drop any single-word suggestion whose word is already fully covered
+		// by an accepted bigram suggestion — e.g. if "emotional boundaries" is
+		// already accepted, "emotional" on its own would produce no visible link
+		// because link_first_occurrence() never links inside an existing <a> tag.
 		$matched_keywords = array();
+		$accepted_bigrams = array(); // bigram keywords already in suggestions.
 		$suggestions      = array();
 
 		foreach ( $scored as $item ) {
-			if ( isset( $matched_keywords[ $item['keyword'] ] ) ) {
+			$kw = $item['keyword'];
+
+			if ( isset( $matched_keywords[ $kw ] ) ) {
 				continue;
 			}
-			$matched_keywords[ $item['keyword'] ] = true;
+
+			// If this is a single word, skip it when a higher-scored bigram
+			// containing this word is already in the suggestion list.
+			$is_single = strpos( $kw, ' ' ) === false;
+			if ( $is_single ) {
+				foreach ( $accepted_bigrams as $bigram ) {
+					// Check if the single word appears as a whole word inside the bigram.
+					if ( preg_match( '/\b' . preg_quote( $kw, '/' ) . '\b/i', $bigram ) ) {
+						continue 2; // Skip this single — already covered by the bigram.
+					}
+				}
+			}
+
+			$matched_keywords[ $kw ] = true;
+			if ( ! $is_single ) {
+				$accepted_bigrams[] = $kw;
+			}
 			unset( $item['score'] );
 			$suggestions[] = $item;
 		}
