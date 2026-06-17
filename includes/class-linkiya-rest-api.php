@@ -246,6 +246,11 @@ class Linkiya_REST_API {
 		// Allow Pro plugin to extend keyword map.
 		$keyword_map = apply_filters( 'linkiya_keyword_map', $keyword_map, $post_id );
 
+		// Temporary debug — remove after diagnosing.
+		if ( current_user_can( 'manage_options' ) && ! empty( $_GET['linkiya_debug'] ) ) {
+			return new WP_REST_Response( array( 'keyword_map' => $keyword_map, 'content' => $content ), 200 );
+		}
+
 		$suggestions = Linkiya_Matcher::find_suggestions( $content, $keyword_map, $applied_ids );
 
 		// Max links — free setting.
