@@ -53,7 +53,7 @@ class Linkiya_Assets {
 		// Enable JavaScript translations.
 		wp_set_script_translations(
 			'linkiya-sidebar',
-			'linkiya-free',
+			'linkiya',
 			LINKIYA_PLUGIN_DIR . 'languages'
 		);
 
@@ -67,13 +67,11 @@ class Linkiya_Assets {
 		$sidebar_data = apply_filters(
 			'linkiya_sidebar_data',
 			array(
-				'restUrl'    => esc_url_raw( rest_url( 'linkiya/v1' ) ),
-				'wpRestUrl'  => esc_url_raw( rest_url( 'wp/v2' ) ),
-				'nonce'      => wp_create_nonce( 'wp_rest' ),
-				'postId'     => (int) ( get_the_ID() ? get_the_ID() : get_queried_object_id() ),
-				'isPro'      => false,
-				'adminUrl'   => esc_url_raw( admin_url() ),
-				'upgradeUrl' => 'https://www.mypluginstore.com/linkiya',
+				'restUrl'   => esc_url_raw( rest_url( 'linkiya/v1' ) ),
+				'wpRestUrl' => esc_url_raw( rest_url( 'wp/v2' ) ),
+				'nonce'     => wp_create_nonce( 'wp_rest' ),
+				'postId'    => (int) ( get_the_ID() ? get_the_ID() : get_queried_object_id() ),
+				'adminUrl'  => esc_url_raw( admin_url() ),
 			)
 		);
 

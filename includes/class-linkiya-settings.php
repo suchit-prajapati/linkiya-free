@@ -65,8 +65,8 @@ class Linkiya_Settings {
 	 */
 	public static function register_menu(): void {
 		add_menu_page(
-			__( 'Linkiya', 'linkiya-free' ),
-			__( 'Linkiya', 'linkiya-free' ),
+			__( 'Linkiya', 'linkiya' ),
+			__( 'Linkiya', 'linkiya' ),
 			'manage_options',
 			'linkiya',
 			array( __CLASS__, 'render_page' ),
@@ -77,8 +77,8 @@ class Linkiya_Settings {
 
 		add_submenu_page(
 			'linkiya',
-			__( 'Settings', 'linkiya-free' ),
-			__( 'Settings', 'linkiya-free' ),
+			__( 'Settings', 'linkiya' ),
+			__( 'Settings', 'linkiya' ),
 			'manage_options',
 			'linkiya',
 			array( __CLASS__, 'render_page' )
@@ -107,7 +107,7 @@ class Linkiya_Settings {
 	public static function handle_save(): void {
 		check_admin_referer( 'linkiya_settings_nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Unauthorized', 'linkiya-free' ) );
+			wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
 		}
 
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each field is individually sanitized below via absint(), sanitize_text_field(), etc.
@@ -150,7 +150,7 @@ class Linkiya_Settings {
 	public static function handle_export(): void {
 		check_admin_referer( 'linkiya_export_settings' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Unauthorized', 'linkiya-free' ) );
+			wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
 		}
 
 		$data = self::get();
@@ -177,7 +177,7 @@ class Linkiya_Settings {
 	public static function handle_import(): void {
 		check_admin_referer( 'linkiya_import_settings' );
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Unauthorized', 'linkiya-free' ) );
+			wp_die( esc_html__( 'Unauthorized', 'linkiya' ) );
 		}
 
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- tmp_name is a server-generated path validated via is_uploaded_file(); other fields validated below.

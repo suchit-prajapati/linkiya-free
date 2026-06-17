@@ -121,19 +121,10 @@ class Linkiya_REST_API {
 	 * @return WP_REST_Response
 	 */
 	public static function handle_status( WP_REST_Request $request ): WP_REST_Response { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Required by WP REST API callback signature; the parameter must be declared even if unused.
-		// Allow Pro plugin to filter status.
 		$status = apply_filters(
 			'linkiya_rest_status',
 			array(
-				'is_pro'   => false,
-				'version'  => LINKIYA_VERSION,
-				'features' => array(
-					'cpt_support'     => false,
-					'category_filter' => false,
-					'exclusions'      => false,
-					'bulk_mode'       => false,
-					'link_report'     => false,
-				),
+				'version' => LINKIYA_VERSION,
 			)
 		);
 
@@ -205,7 +196,7 @@ class Linkiya_REST_API {
         // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		if ( $attempts > 20 ) {
-			return new WP_REST_Response( array( 'error' => __( 'Too many requests. Please wait a moment.', 'linkiya-free' ) ), 429 );
+			return new WP_REST_Response( array( 'error' => __( 'Too many requests. Please wait a moment.', 'linkiya' ) ), 429 );
 		}
 
 		$body    = $request->get_json_params();
@@ -224,8 +215,7 @@ class Linkiya_REST_API {
 			}
 		}
 
-		// Free: posts and pages only.
-		$post_types = apply_filters( 'linkiya_suggest_post_types', array( 'post', 'page' ), $post_id );
+		$post_types = apply_filters( 'linkiya_suggest_post_types', Linkiya_Keyword_Extractor::get_all_public_post_types(), $post_id );
 
 		$keyword_map = Linkiya_Keyword_Extractor::get_keyword_map( $post_id, $post_types );
 
