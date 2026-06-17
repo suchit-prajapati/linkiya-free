@@ -201,7 +201,9 @@ class Linkiya_REST_API {
 
 		$body    = $request->get_json_params();
 		$post_id = absint( $body['post_id'] ?? 0 );
-		$content = wp_kses_post( $body['content'] ?? '' );
+		// Content is used for read-only scanning only — never output. wp_kses_post would
+		// strip href attributes in certain URLs, causing already-linked URLs to be undetectable.
+		$content = wp_unslash( (string) ( $body['content'] ?? '' ) );
 
 		if ( ! $post_id ) {
 			return new WP_REST_Response( array( 'error' => 'Invalid post_id.' ), 400 );
