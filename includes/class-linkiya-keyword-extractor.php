@@ -192,10 +192,10 @@ class Linkiya_Keyword_Extractor {
 			}
 		}
 
-		// Pass 2 — for each post, keep only keywords that are unique (DF = 1)
-		// or rare (DF <= 2 for bigrams only), enforce single-word min length of 7,
-		// then pick the top 3 most specific (longest first).
-		$map = array();
+		// Pass 2 — for each post, keep only sufficiently rare keywords, then
+		// pick the top 5 most specific (longest first).
+		$min_len = self::get_min_word_len();
+		$map     = array();
 
 		foreach ( $posts as $post ) {
 			$candidates = $raw[ $post->ID ] ?? array();
@@ -208,15 +208,14 @@ class Linkiya_Keyword_Extractor {
 				$df       = $df_index[ $kw ] ?? 1;
 				$is_multi = strpos( $kw, ' ' ) !== false;
 
-				// Bigrams/trigrams: allow DF <= 2 (slightly relaxed — multi-word phrases are inherently specific).
-				// Single words: must be unique (DF = 1) AND at least 7 characters.
 				if ( $is_multi ) {
-					if ( $df <= 2 ) {
+					// Phrases: allow DF <= 3 — multi-word phrases are inherently specific.
+					if ( $df <= 3 ) {
 						$filtered[] = $kw;
 					}
 				} else {
-					// Single words: must be unique (DF=1) and at least 8 chars to avoid generic words.
-					if ( $df === 1 && strlen( $kw ) >= 8 ) {
+					// Single words: DF <= 2 and respects user's min word length setting.
+					if ( $df <= 2 && strlen( $kw ) >= $min_len ) {
 						$filtered[] = $kw;
 					}
 				}
@@ -226,9 +225,9 @@ class Linkiya_Keyword_Extractor {
 				continue;
 			}
 
-			// Sort: longest first (bigrams naturally bubble up), then cap at 3.
+			// Sort: longest first (phrases naturally bubble up), then cap at 5.
 			usort( $filtered, fn( $a, $b ) => strlen( $b ) - strlen( $a ) );
-			$filtered = array_slice( $filtered, 0, 3 );
+			$filtered = array_slice( $filtered, 0, 5 );
 
 			$map[] = array(
 				'post_id'   => $post->ID,
