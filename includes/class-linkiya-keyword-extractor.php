@@ -213,11 +213,8 @@ class Linkiya_Keyword_Extractor {
 				$is_multi = strpos( $kw, ' ' ) !== false;
 
 				if ( $is_multi ) {
-					// Phrases: allow up to 20% of total posts — common on niche sites.
-					$df_limit = max( 5, (int) round( count( $posts ) * 0.2 ) );
-					if ( $df <= $df_limit ) {
-						$filtered[] = $kw;
-					}
+					// Phrases are inherently specific — always include regardless of DF.
+					$filtered[] = $kw;
 				} elseif ( strlen( $kw ) >= $min_len ) {
 					// Single words: allow up to 10% of total posts.
 					$df_limit = max( 3, (int) round( count( $posts ) * 0.1 ) );

@@ -276,11 +276,18 @@ function LinkiyaSidebar() {
                     { status === STATUS.DONE && (
                         <>
                             { suggestions.length === 0 ? (
-                                <PanelRow>
-                                    <Notice status="info" isDismissible={ false }>
-                                        { __( 'No opportunities found in this post.', 'linkiya' ) }
-                                    </Notice>
-                                </PanelRow>
+                                <>
+                                    <PanelRow>
+                                        <Notice status="info" isDismissible={ false }>
+                                            { __( 'No opportunities found in this post.', 'linkiya' ) }
+                                        </Notice>
+                                    </PanelRow>
+                                    <PanelRow>
+                                        <Button variant="secondary" onClick={ runScan } style={ { width: '100%', justifyContent: 'center' } }>
+                                            { __( 'Re-scan', 'linkiya' ) }
+                                        </Button>
+                                    </PanelRow>
+                                </>
                             ) : (
                                 <>
                                     <PanelRow>
