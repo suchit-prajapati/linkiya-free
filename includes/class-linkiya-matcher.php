@@ -33,14 +33,34 @@ class Linkiya_Matcher {
 	 */
 	public static function find_suggestions( string $content, array $keyword_map ): array {
 
+		// Normalize a URL for comparison: lowercase, strip protocol, www, and trailing slash.
+		$normalize_url = static function ( string $url ): string {
+			$url = strtolower( trim( $url ) );
+			$url = preg_replace( '#^https?://#', '', $url );
+			$url = preg_replace( '#^www\.#', '', $url );
+			return rtrim( $url, '/' );
+		};
+
 		// Collect post IDs already linked anywhere in the content.
 		$already_linked_ids = array();
 		if ( preg_match_all( '/<a\b[^>]*\bhref=["\']([^"\']+)["\'][^>]*>/is', $content, $href_matches ) ) {
 			foreach ( $href_matches[1] as $href ) {
+				$href_norm = $normalize_url( $href );
 				foreach ( $keyword_map as $entry ) {
-					if ( ! empty( $entry['url'] ) && rtrim( $entry['url'], '/' ) === rtrim( $href, '/' ) ) {
+					if ( ! empty( $entry['url'] ) && $normalize_url( $entry['url'] ) === $href_norm ) {
 						$already_linked_ids[ (int) $entry['post_id'] ] = true;
 					}
+				}
+			}
+		}
+
+		// Also collect anchor texts already linked, as a fallback for URL-mismatch cases.
+		$already_linked_texts = array();
+		if ( preg_match_all( '/<a\b[^>]*>(.*?)<\/a>/is', $content, $anchor_matches ) ) {
+			foreach ( $anchor_matches[1] as $anchor_html ) {
+				$text = strtolower( trim( wp_strip_all_tags( $anchor_html ) ) );
+				if ( $text !== '' ) {
+					$already_linked_texts[ $text ] = true;
 				}
 			}
 		}
@@ -77,6 +97,11 @@ class Linkiya_Matcher {
 			foreach ( $entry['keywords'] as $keyword ) {
 				if ( isset( $matched_keywords[ $keyword ] ) ) {
 					continue; // Keyword already used for another post.
+				}
+
+				// Skip if this keyword is already used as anchor text in an existing link.
+				if ( isset( $already_linked_texts[ strtolower( $keyword ) ] ) ) {
+					continue;
 				}
 
 				if ( self::keyword_exists_in_text( $keyword, $plain_text ) ) {
