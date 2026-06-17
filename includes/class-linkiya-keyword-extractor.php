@@ -274,7 +274,9 @@ class Linkiya_Keyword_Extractor {
 			return ctype_digit( $t ) || ( strlen( $t ) >= 3 && ! isset( $stop_words[ $t ] ) );
 		};
 
-		// Bigrams.
+		// Bigrams — require both tokens to be valid, but also emit the full
+		// consecutive pair so phrases like "science of anger" match when "of"
+		// sits between two valid words.
 		for ( $i = 0; $i < $token_count - 1; $i++ ) {
 			$a = $tokens[ $i ];
 			$b = $tokens[ $i + 1 ];
@@ -283,12 +285,14 @@ class Linkiya_Keyword_Extractor {
 			}
 		}
 
-		// Trigrams.
+		// Trigrams — require first and last tokens to be valid; middle may be a
+		// short connective (e.g. "of", "in", "the") so we emit the full 3-token
+		// string to match phrases like "science of anger".
 		for ( $i = 0; $i < $token_count - 2; $i++ ) {
 			$a = $tokens[ $i ];
 			$b = $tokens[ $i + 1 ];
 			$c = $tokens[ $i + 2 ];
-			if ( $is_phrase_token( $a ) && $is_phrase_token( $b ) && $is_phrase_token( $c ) ) {
+			if ( $is_phrase_token( $a ) && $is_phrase_token( $c ) ) {
 				$keywords[] = $a . ' ' . $b . ' ' . $c;
 			}
 		}
