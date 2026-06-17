@@ -94,16 +94,6 @@ class Linkiya_REST_API {
 				'permission_callback' => fn() => current_user_can( 'edit_posts' ),
 			)
 		);
-
-		register_rest_route(
-			self::NAMESPACE,
-			'/debug',
-			array(
-				'methods'             => 'POST',
-				'callback'            => array( __CLASS__, 'handle_debug' ),
-				'permission_callback' => fn() => current_user_can( 'manage_options' ),
-			)
-		);
 	}
 
 	/**
@@ -426,54 +416,6 @@ $suggestions = Linkiya_Matcher::find_suggestions( $content, $keyword_map, $appli
 				'success'          => true,
 				'post_id'          => $post_id,
 				'stripped_content' => $stripped,
-			),
-			200
-		);
-	}
-
-	/* ── POST /linkiya/v1/debug ──────────────────────────────────── */
-
-	/**
-	 * Debug endpoint: returns keyword map and plain text for a given post.
-	 * Only accessible to admins. Remove after debugging.
-	 *
-	 * @param WP_REST_Request $request Incoming REST request.
-	 * @return WP_REST_Response
-	 */
-	public static function handle_debug( WP_REST_Request $request ): WP_REST_Response {
-		$body    = $request->get_json_params();
-		$post_id = absint( $body['post_id'] ?? 0 );
-
-		if ( ! $post_id ) {
-			return new WP_REST_Response( array( 'error' => 'Invalid post_id.' ), 400 );
-		}
-
-		$post = get_post( $post_id );
-		if ( ! $post ) {
-			return new WP_REST_Response( array( 'error' => 'Post not found.' ), 404 );
-		}
-
-		$content = $post->post_content;
-
-		// Replicate exactly what find_suggestions does to get plain text.
-		$stripped   = preg_replace( '/<a\b[^>]*>.*?<\/a>/is', ' LINKED_PLACEHOLDER ', $content );
-		$stripped   = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
-		$plain_text = wp_strip_all_tags( $stripped );
-
-		$post_types  = Linkiya_Keyword_Extractor::get_all_public_post_types();
-		$keyword_map = Linkiya_Keyword_Extractor::get_keyword_map( $post_id, $post_types );
-
-		$settings = Linkiya_Settings::get();
-
-		return new WP_REST_Response(
-			array(
-				'post_id'     => $post_id,
-				'post_title'  => $post->post_title,
-				'raw_content' => substr( $content, 0, 500 ),
-				'plain_text'  => $plain_text,
-				'keyword_map' => $keyword_map,
-				'settings'    => $settings,
-				'post_types'  => $post_types,
 			),
 			200
 		);
