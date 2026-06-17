@@ -284,6 +284,34 @@ function LinkiyaSidebar() {
                             ) : (
                                 <>
                                     <PanelRow>
+                                        <div className="linkiya-apply-row">
+                                            <Button
+                                                variant="primary"
+                                                className="linkiya-apply-btn"
+                                                onClick={ applyLinks }
+                                                disabled={ selectedCount === 0 || status === STATUS.APPLYING }
+                                                isBusy={ status === STATUS.APPLYING }
+                                            >
+                                                { status === STATUS.APPLYING
+                                                    ? __( 'Applying…', 'linkiya' )
+                                                    : sprintf(
+                                                        _n( 'Apply %d Link', 'Apply %d Links', selectedCount, 'linkiya' ),
+                                                        selectedCount
+                                                    )
+                                                }
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                className="linkiya-rerun-btn"
+                                                onClick={ runAnalysis }
+                                                disabled={ status === STATUS.APPLYING }
+                                            >
+                                                { __( 'Re-scan', 'linkiya' ) }
+                                            </Button>
+                                        </div>
+                                    </PanelRow>
+
+                                    <PanelRow>
                                         <div className="linkiya-summary">
                                             <span className="linkiya-badge">{ suggestions.length }</span>
                                             { ' ' + __( 'opportunities found', 'linkiya' ) }
@@ -372,33 +400,6 @@ function LinkiyaSidebar() {
                                         } ) }
                                     </div>
 
-                                    <PanelRow>
-                                        <div className="linkiya-apply-row">
-                                            <Button
-                                                variant="primary"
-                                                className="linkiya-apply-btn"
-                                                onClick={ applyLinks }
-                                                disabled={ selectedCount === 0 || status === STATUS.APPLYING }
-                                                isBusy={ status === STATUS.APPLYING }
-                                            >
-                                                { status === STATUS.APPLYING
-                                                    ? __( 'Applying…', 'linkiya' )
-                                                    : sprintf(
-                                                        _n( 'Apply %d Link', 'Apply %d Links', selectedCount, 'linkiya' ),
-                                                        selectedCount
-                                                    )
-                                                }
-                                            </Button>
-                                            <Button
-                                                variant="secondary"
-                                                className="linkiya-rerun-btn"
-                                                onClick={ runAnalysis }
-                                                disabled={ status === STATUS.APPLYING }
-                                            >
-                                                { __( 'Re-scan', 'linkiya' ) }
-                                            </Button>
-                                        </div>
-                                    </PanelRow>
                                 </>
                             ) }
                         </>
