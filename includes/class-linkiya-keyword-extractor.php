@@ -97,7 +97,7 @@ class Linkiya_Keyword_Extractor {
 		'time'         => 1, 'times'       => 1, 'hour'        => 1, 'type'        => 1,
 		'types'        => 1, 'kind'        => 1, 'part'        => 1, 'step'        => 1,
 		'steps'        => 1, 'list'        => 1, 'thing'       => 1, 'things'      => 1,
-		'idea'         => 1, 'ideas'       => 1, 'rule'        => 1, 'rules'       => 1,
+		'idea'         => 1, 'ideas'       => 1,
 		'fact'         => 1, 'facts'       => 1, 'sign'        => 1, 'signs'       => 1,
 		'reason'       => 1, 'reasons'     => 1, 'word'        => 1, 'words'       => 1,
 		'mind'         => 1, 'body'        => 1, 'soul'        => 1, 'world'       => 1,
@@ -393,29 +393,39 @@ class Linkiya_Keyword_Extractor {
 			}
 		}
 
-		// Bigrams — both tokens must pass the stop word filter (length >= min_len relaxed to 3 for bigrams).
+		// A token is valid for multi-word phrases if it's a number (any length)
+		// OR a non-stop word of at least 3 chars.
+		$is_phrase_token = static function ( string $t ): bool {
+			return ctype_digit( $t ) || ( strlen( $t ) >= 3 && ! isset( self::$stop_words[ $t ] ) );
+		};
+
+		// Bigrams.
 		for ( $i = 0; $i < $token_count - 1; $i++ ) {
 			$a = $tokens[ $i ];
 			$b = $tokens[ $i + 1 ];
-			if (
-				strlen( $a ) >= 3 && ! isset( self::$stop_words[ $a ] ) &&
-				strlen( $b ) >= 3 && ! isset( self::$stop_words[ $b ] )
-			) {
+			if ( $is_phrase_token( $a ) && $is_phrase_token( $b ) ) {
 				$keywords[] = $a . ' ' . $b;
 			}
 		}
 
-		// Trigrams — three consecutive non-stop tokens for highly specific phrases.
+		// Trigrams.
 		for ( $i = 0; $i < $token_count - 2; $i++ ) {
 			$a = $tokens[ $i ];
 			$b = $tokens[ $i + 1 ];
 			$c = $tokens[ $i + 2 ];
-			if (
-				strlen( $a ) >= 3 && ! isset( self::$stop_words[ $a ] ) &&
-				strlen( $b ) >= 3 && ! isset( self::$stop_words[ $b ] ) &&
-				strlen( $c ) >= 3 && ! isset( self::$stop_words[ $c ] )
-			) {
+			if ( $is_phrase_token( $a ) && $is_phrase_token( $b ) && $is_phrase_token( $c ) ) {
 				$keywords[] = $a . ' ' . $b . ' ' . $c;
+			}
+		}
+
+		// 4-grams — for number-heavy titles like "5 5 5 rule" (4 tokens all valid).
+		for ( $i = 0; $i < $token_count - 3; $i++ ) {
+			$a = $tokens[ $i ];
+			$b = $tokens[ $i + 1 ];
+			$c = $tokens[ $i + 2 ];
+			$d = $tokens[ $i + 3 ];
+			if ( $is_phrase_token( $a ) && $is_phrase_token( $b ) && $is_phrase_token( $c ) && $is_phrase_token( $d ) ) {
+				$keywords[] = $a . ' ' . $b . ' ' . $c . ' ' . $d;
 			}
 		}
 
