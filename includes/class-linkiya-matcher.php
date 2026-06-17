@@ -55,7 +55,7 @@ class Linkiya_Matcher {
 			}
 		}
 
-		// Also collect anchor texts already linked, as a fallback for URL-mismatch cases.
+		// Collect anchor texts already linked as a fallback for URL-mismatch cases.
 		$already_linked_texts = array();
 		if ( preg_match_all( '/<a\b[^>]*>(.*?)<\/a>/is', $content, $anchor_matches ) ) {
 			foreach ( $anchor_matches[1] as $anchor_html ) {
@@ -66,25 +66,24 @@ class Linkiya_Matcher {
 			}
 		}
 
-		// Strip existing <a>…</a> spans so we don't re-suggest already-linked text.
+		// Strip existing <a>…</a> so we don't re-suggest already-linked text.
 		$stripped = preg_replace( '/<a\b[^>]*>.*?<\/a>/is', ' LINKED_PLACEHOLDER ', $content );
 
-		// Strip heading tags so keywords that only appear in headings are not suggested.
+		// Strip heading tags — never suggest links for text that only appears in headings.
 		$stripped = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
 
-		// Strip all other HTML tags to get plain searchable text.
+		// Get plain searchable text.
 		$plain_text = wp_strip_all_tags( $stripped );
 
-		// Flatten all keywords across all posts into a single list so we can
-		// match longest/most-specific phrases first, regardless of post order.
-		// Each item: [ keyword, entry_index ] so we can look up the entry later.
+		// Flatten all (keyword, entry_index) pairs from the keyword map into one list,
+		// skipping posts that are already linked or excluded.
 		$all_candidates = array();
 		foreach ( $keyword_map as $idx => $entry ) {
 			if ( empty( $entry['post_id'] ) || empty( $entry['keywords'] ) || ! is_array( $entry['keywords'] ) ) {
 				continue;
 			}
 			$entry_id = (int) $entry['post_id'];
-			if ( $entry_id > 0 && ( isset( $meta_applied_ids[ $entry_id ] ) || isset( $already_linked_ids[ $entry_id ] ) ) ) {
+			if ( isset( $meta_applied_ids[ $entry_id ] ) || isset( $already_linked_ids[ $entry_id ] ) ) {
 				continue;
 			}
 			foreach ( $entry['keywords'] as $keyword ) {
@@ -92,21 +91,26 @@ class Linkiya_Matcher {
 			}
 		}
 
-		// Sort all candidates: no-digit phrases first, then by word count desc, then length desc.
+		// Sort all candidates globally so the most specific/matchable keywords win
+		// regardless of which post they come from or the post's position in the map.
+		// Priority: bigrams without digits > bigrams with digits > single words.
+		// Within each tier: longer first.
 		usort(
 			$all_candidates,
 			static function ( $a, $b ) {
-				$a_kw        = $a[0];
-				$b_kw        = $b[0];
-				$a_has_digit = (int) preg_match( '/\d/', $a_kw );
-				$b_has_digit = (int) preg_match( '/\d/', $b_kw );
-				if ( $a_has_digit !== $b_has_digit ) {
-					return $a_has_digit - $b_has_digit;
-				}
-				$a_words = substr_count( $a_kw, ' ' ) + 1;
-				$b_words = substr_count( $b_kw, ' ' ) + 1;
-				if ( $a_words !== $b_words ) {
-					return $b_words - $a_words;
+				$a_kw      = $a[0];
+				$b_kw      = $b[0];
+				$a_is_bi   = strpos( $a_kw, ' ' ) !== false;
+				$b_is_bi   = strpos( $b_kw, ' ' ) !== false;
+				$a_digit   = (int) preg_match( '/\d/', $a_kw );
+				$b_digit   = (int) preg_match( '/\d/', $b_kw );
+
+				// Tier: bigram-no-digit=0, bigram-with-digit=1, single=2.
+				$a_tier = $a_is_bi ? $a_digit : 2;
+				$b_tier = $b_is_bi ? $b_digit : 2;
+
+				if ( $a_tier !== $b_tier ) {
+					return $a_tier - $b_tier;
 				}
 				return strlen( $b_kw ) - strlen( $a_kw );
 			}
@@ -121,7 +125,7 @@ class Linkiya_Matcher {
 			$entry_id = (int) $entry['post_id'];
 
 			if ( isset( $matched_post_ids[ $entry_id ] ) ) {
-				continue; // Already found a match for this post.
+				continue; // Already have a suggestion for this post.
 			}
 			if ( isset( $matched_keywords[ $keyword ] ) ) {
 				continue; // Keyword already claimed by another post.
@@ -157,7 +161,6 @@ class Linkiya_Matcher {
 	 */
 	private static function keyword_exists_in_text( string $keyword, string $text ): bool {
 		$escaped = preg_quote( $keyword, '/' );
-		// \b is a word boundary — works well for ASCII/Latin text.
 		return (bool) preg_match( '/\b' . $escaped . '\b/iu', $text );
 	}
 
@@ -180,7 +183,6 @@ class Linkiya_Matcher {
 			$url     = esc_url( $suggestion['url'] );
 			$title   = esc_attr( $suggestion['post_title'] ?? '' );
 
-			// Per-suggestion overrides for external/affiliate links.
 			$target = $link_target;
 			$rel    = $link_rel;
 
@@ -199,10 +201,7 @@ class Linkiya_Matcher {
 
 	/**
 	 * Find the first whole-word occurrence of $keyword in $content that is
-	 * NOT inside an existing <a> tag, and wrap it with a link.
-	 *
-	 * Strategy: split content on <a>…</a> blocks, operate only on the
-	 * text/non-link segments.
+	 * NOT inside an existing <a> tag or heading, and wrap it with a link.
 	 *
 	 * @param string $content Post content HTML.
 	 * @param string $keyword Keyword to find and link.
@@ -220,7 +219,6 @@ class Linkiya_Matcher {
 		$pattern = '/(<a\b[^>]*>.*?<\/a>|<h[1-6]\b[^>]*>.*?<\/h[1-6]>)/is';
 		$parts   = preg_split( $pattern, $content, -1, PREG_SPLIT_DELIM_CAPTURE );
 
-		// Build the <a> tag with optional target and rel.
 		$attrs = 'href="' . esc_attr( $url ) . '" title="' . esc_attr( $title ) . '"';
 		if ( $target && '_self' !== $target ) {
 			$attrs .= ' target="' . esc_attr( $target ) . '"';
@@ -228,7 +226,6 @@ class Linkiya_Matcher {
 		if ( $rel ) {
 			$attrs .= ' rel="' . esc_attr( $rel ) . '"';
 		}
-		// Allow Pro plugin to add extra link attributes (e.g. click tracking).
 		$attrs = apply_filters( 'linkiya_link_attrs', $attrs, $url );
 		$attrs = wp_kses( '<a ' . $attrs . '>', array( 'a' => array_fill_keys( array( 'href', 'title', 'target', 'rel', 'class', 'id' ), true ) ) );
 		$attrs = trim( preg_replace( '/^<a\s*/i', '', rtrim( $attrs, '>' ) ) );
@@ -236,8 +233,7 @@ class Linkiya_Matcher {
 		$result = '';
 		foreach ( $parts as $part ) {
 			if ( ! $linked && ! preg_match( '/^<a\b/i', $part ) && ! preg_match( '/^<h[1-6]\b/i', $part ) ) {
-				$escaped = preg_quote( $keyword, '/' );
-				// Use preg_replace_callback to avoid backreference interpretation in anchor text.
+				$escaped    = preg_quote( $keyword, '/' );
 				$link_text  = ( $anchor !== $keyword ) ? esc_html( $anchor ) : null;
 				$link_open  = '<a ' . $attrs . '>';
 				$link_close = '</a>';

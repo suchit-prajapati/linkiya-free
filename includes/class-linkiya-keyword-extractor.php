@@ -11,12 +11,16 @@ defined( 'ABSPATH' ) || exit;
  * Linkiya_Keyword_Extractor
  *
  * Fetches all published posts (excluding the current one) and extracts
- * meaningful single-word and two-word (bigram) keywords from their titles.
- * Results are cached via transients and invalidated on post save/delete.
+ * meaningful keywords from their titles. For each post we keep up to 3
+ * bigrams (two-word phrases) and up to 2 single words, giving a balanced
+ * set that works for both short and long post bodies.
+ *
+ * Trigrams and 4-grams are intentionally omitted: they almost never appear
+ * verbatim in other posts' body text and only waste keyword slots.
  */
 class Linkiya_Keyword_Extractor {
 
-	const CACHE_KEY    = 'linkiya_keyword_map_v3';
+	const CACHE_KEY    = 'linkiya_keyword_map_v5';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
 	/**
@@ -61,13 +65,11 @@ class Linkiya_Keyword_Extractor {
 		add_action( 'save_post', array( __CLASS__, 'invalidate_cache' ) );
 		add_action( 'delete_post', array( __CLASS__, 'invalidate_cache' ) );
 		add_action( 'trashed_post', array( __CLASS__, 'invalidate_cache' ) );
-		// After save the DB content is authoritative — clear the unsaved-state meta.
 		add_action( 'save_post', array( __CLASS__, 'clear_applied_ids_meta' ) );
 	}
 
 	/**
 	 * Clear applied-link post IDs meta after a post is saved.
-	 * After save, the DB content is the source of truth for already-linked detection.
 	 *
 	 * @param int $post_id Saved post ID.
 	 * @return void
@@ -81,7 +83,6 @@ class Linkiya_Keyword_Extractor {
 	 */
 	public static function invalidate_cache(): void {
 		global $wpdb;
-		// Delete all variants of the keyword map transient regardless of post-type hash suffix.
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Required to delete all hash-suffixed transient variants; no WordPress API supports wildcard transient deletion. Cache is being invalidated, not read.
 		$wpdb->query(
 			$wpdb->prepare(
@@ -127,7 +128,6 @@ class Linkiya_Keyword_Extractor {
 	/**
 	 * Get all published posts and return a keyword map.
 	 * Results are cached in a transient for CACHE_EXPIRY seconds.
-	 * The cache is invalidated whenever any post is saved or deleted.
 	 *
 	 * @param int   $exclude_id  Post ID to exclude (the one being edited).
 	 * @param array $post_types  Explicit list, or empty to auto-detect.
@@ -138,23 +138,19 @@ class Linkiya_Keyword_Extractor {
 			$post_types = self::get_all_public_post_types();
 		}
 
-		// Build a cache key that is stable per post-type combination.
 		$cache_key = self::CACHE_KEY . '_' . md5( implode( ',', $post_types ) );
-
-		$map = get_transient( $cache_key );
+		$map       = get_transient( $cache_key );
 
 		if ( false === $map ) {
 			$map = self::build_keyword_map( $post_types );
 			set_transient( $cache_key, $map, self::CACHE_EXPIRY );
 		}
 
-		// Exclude the currently edited post from the cached map.
 		return array_values( array_filter( $map, fn( $e ) => (int) $e['post_id'] !== $exclude_id ) );
 	}
 
 	/**
 	 * Build the full keyword map from the database (uncached).
-	 * Only called on cache miss.
 	 *
 	 * @param array $post_types Post type slugs to include.
 	 * @return array
@@ -178,15 +174,14 @@ class Linkiya_Keyword_Extractor {
 
 		update_post_caches( $posts, 'posts', false, false );
 
-		// Pass 1 — extract raw candidates for every post and build a global
-		// document-frequency (DF) index: keyword => number of posts it appears in.
-		$raw      = array(); // post_id => candidate keywords array.
-		$df_index = array(); // keyword => count of posts.
+		$total_posts = count( $posts );
+
+		// Pass 1 — extract candidates and build document-frequency index.
+		$raw      = array();
+		$df_index = array();
 
 		foreach ( $posts as $post ) {
 			$candidates = self::extract_keywords( $post->post_title );
-
-			// Allow Pro plugin to add custom keywords.
 			$candidates = apply_filters( 'linkiya_post_keywords', $candidates, $post->ID );
 
 			$raw[ $post->ID ] = $candidates;
@@ -196,10 +191,11 @@ class Linkiya_Keyword_Extractor {
 			}
 		}
 
-		// Pass 2 — for each post, keep only sufficiently rare keywords, then
-		// pick the top 5 most specific (longest first).
-		$min_len = self::get_min_word_len();
-		$map     = array();
+		// Pass 2 — select final keywords for each post.
+		// Strategy: up to 3 bigrams + up to 2 single words, always guaranteeing
+		// at least one single word so short post bodies can still get a match.
+		$df_limit_single = max( 3, (int) round( $total_posts * 0.2 ) ); // 20% for singles.
+		$map             = array();
 
 		foreach ( $posts as $post ) {
 			$candidates = $raw[ $post->ID ] ?? array();
@@ -207,54 +203,57 @@ class Linkiya_Keyword_Extractor {
 				continue;
 			}
 
-			$filtered = array();
-			foreach ( $candidates as $kw ) {
-				$df       = $df_index[ $kw ] ?? 1;
-				$is_multi = strpos( $kw, ' ' ) !== false;
+			$bigrams = array();
+			$singles = array();
 
-				if ( $is_multi ) {
-					// Phrases are inherently specific — always include regardless of DF.
-					$filtered[] = $kw;
-				} elseif ( strlen( $kw ) >= $min_len ) {
-					// Single words: allow up to 10% of total posts.
-					$df_limit = max( 3, (int) round( count( $posts ) * 0.1 ) );
-					if ( $df <= $df_limit ) {
-						$filtered[] = $kw;
+			foreach ( $candidates as $kw ) {
+				$is_bigram = strpos( $kw, ' ' ) !== false;
+				$df        = $df_index[ $kw ] ?? 1;
+
+				if ( $is_bigram ) {
+					// Prefer bigrams without digits — sort them after collection.
+					$bigrams[] = $kw;
+				} else {
+					// Single words: DF must be within limit.
+					if ( $df <= $df_limit_single ) {
+						$singles[] = $kw;
 					}
 				}
 			}
 
-			if ( empty( $filtered ) ) {
-				continue;
-			}
-
-			// Sort: phrases without digits beat those with digits (digit-heavy n-grams like
-			// "11 practical techniques" are too specific to match real content), then by
-			// word count descending, then by length as a tiebreaker.
+			// Sort bigrams: no-digit first, then longer first.
 			usort(
-				$filtered,
+				$bigrams,
 				static function ( $a, $b ) {
-					$a_has_digit = (int) preg_match( '/\d/', $a );
-					$b_has_digit = (int) preg_match( '/\d/', $b );
-					if ( $a_has_digit !== $b_has_digit ) {
-						return $a_has_digit - $b_has_digit; // no-digit first.
+					$a_digit = (int) preg_match( '/\d/', $a );
+					$b_digit = (int) preg_match( '/\d/', $b );
+					if ( $a_digit !== $b_digit ) {
+						return $a_digit - $b_digit; // no-digit first.
 					}
-					$a_words = substr_count( $a, ' ' ) + 1;
-					$b_words = substr_count( $b, ' ' ) + 1;
-					if ( $a_words !== $b_words ) {
-						return $b_words - $a_words; // more words first.
-					}
-					return strlen( $b ) - strlen( $a );
+					return strlen( $b ) - strlen( $a ); // longer first.
 				}
 			);
-			$filtered = array_slice( $filtered, 0, 5 );
+
+			// Sort singles: longer first (longer = more specific / rarer).
+			usort( $singles, fn( $a, $b ) => strlen( $b ) - strlen( $a ) );
+
+			// Take top 3 bigrams and top 2 singles.
+			// Always include at least 1 single so a post body with just one keyword word can match.
+			$keywords = array_merge(
+				array_slice( $bigrams, 0, 3 ),
+				array_slice( $singles, 0, 2 )
+			);
+
+			if ( empty( $keywords ) ) {
+				continue;
+			}
 
 			$map[] = array(
 				'post_id'   => $post->ID,
 				'title'     => $post->post_title,
 				'url'       => get_permalink( $post ),
 				'post_type' => $post->post_type,
-				'keywords'  => $filtered,
+				'keywords'  => $keywords,
 			);
 		}
 
@@ -262,8 +261,10 @@ class Linkiya_Keyword_Extractor {
 	}
 
 	/**
-	 * Extract keywords (singles + bigrams) from a post title.
-	 * Returned sorted longest-first so bigrams are tried before singles.
+	 * Extract single words and bigrams from a post title.
+	 *
+	 * Trigrams and 4-grams are excluded by design: they are too long to appear
+	 * verbatim in most post bodies and only create noise in the keyword map.
 	 *
 	 * @param  string $title Post title to extract keywords from.
 	 * @return string[]
@@ -271,65 +272,36 @@ class Linkiya_Keyword_Extractor {
 	public static function extract_keywords( string $title ): array {
 		$min_len = self::get_min_word_len();
 
-		// Replace hyphens with nothing so "Well-Being" → "wellbeing" (one token, not two).
+		// Strip hyphens so "Well-Being" → "wellbeing", then lowercase and remove punctuation.
 		$clean  = strtolower( preg_replace( '/[^\w\s]/u', ' ', str_replace( '-', '', $title ) ) );
 		$tokens = preg_split( '/\s+/', trim( $clean ), -1, PREG_SPLIT_NO_EMPTY );
 
+		$stop_words  = self::get_stop_words();
 		$keywords    = array();
 		$token_count = count( $tokens );
-		$stop_words  = self::get_stop_words();
 
-		// Single words — include all non-stop-word tokens (DF + length filter happens in build_keyword_map).
+		// Single words: must meet min length and not be a stop word.
 		foreach ( $tokens as $t ) {
 			if ( strlen( $t ) >= $min_len && ! isset( $stop_words[ $t ] ) ) {
 				$keywords[] = $t;
 			}
 		}
 
-		// A token is valid for multi-word phrases if it's a number (any length)
-		// OR a non-stop word of at least 3 chars.
-		$is_phrase_token = static function ( string $t ) use ( $stop_words ): bool {
+		// Bigrams: both tokens must be non-stop-words of at least 3 chars, OR digits.
+		// This allows connective stop words (in, of, the) to sit BETWEEN two valid words
+		// only at the bigram level — e.g. "control anger" not "anger in".
+		$is_content_token = static function ( string $t ) use ( $stop_words ): bool {
 			return ctype_digit( $t ) || ( strlen( $t ) >= 3 && ! isset( $stop_words[ $t ] ) );
 		};
 
-		// Bigrams — require both tokens to be valid, but also emit the full
-		// consecutive pair so phrases like "science of anger" match when "of"
-		// sits between two valid words.
 		for ( $i = 0; $i < $token_count - 1; $i++ ) {
 			$a = $tokens[ $i ];
 			$b = $tokens[ $i + 1 ];
-			if ( $is_phrase_token( $a ) && $is_phrase_token( $b ) ) {
+			if ( $is_content_token( $a ) && $is_content_token( $b ) ) {
 				$keywords[] = $a . ' ' . $b;
 			}
 		}
 
-		// Trigrams — require first and last tokens to be valid; middle may be a
-		// short connective (e.g. "of", "in", "the") so we emit the full 3-token
-		// string to match phrases like "science of anger".
-		for ( $i = 0; $i < $token_count - 2; $i++ ) {
-			$a = $tokens[ $i ];
-			$b = $tokens[ $i + 1 ];
-			$c = $tokens[ $i + 2 ];
-			if ( $is_phrase_token( $a ) && $is_phrase_token( $c ) ) {
-				$keywords[] = $a . ' ' . $b . ' ' . $c;
-			}
-		}
-
-		// 4-grams — for number-heavy titles like "5 5 5 rule" (4 tokens all valid).
-		for ( $i = 0; $i < $token_count - 3; $i++ ) {
-			$a = $tokens[ $i ];
-			$b = $tokens[ $i + 1 ];
-			$c = $tokens[ $i + 2 ];
-			$d = $tokens[ $i + 3 ];
-			if ( $is_phrase_token( $a ) && $is_phrase_token( $b ) && $is_phrase_token( $c ) && $is_phrase_token( $d ) ) {
-				$keywords[] = $a . ' ' . $b . ' ' . $c . ' ' . $d;
-			}
-		}
-
-		$keywords = array_unique( $keywords );
-		// Sort longest-first so trigrams > bigrams > singles in priority.
-		usort( $keywords, fn( $a, $b ) => strlen( $b ) - strlen( $a ) );
-
-		return array_values( $keywords );
+		return array_values( array_unique( $keywords ) );
 	}
 }
