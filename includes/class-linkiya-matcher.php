@@ -10,9 +10,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Linkiya_Matcher
  *
- * Given the current post's plain text content and the keyword map from
- * Linkiya_Keyword_Extractor, finds which keywords appear (whole-word, not
- * already linked) and returns a deduplicated suggestion list.
+ * Extracts the main topics of the current post's content, then finds
+ * other published posts whose keywords cover those topics.
+ *
+ * Matching direction: content topics → keyword map (topic-driven).
+ * This means a post about "Reiki" finds the Reiki article even if
+ * the word only appears once, because the topic is extracted from
+ * the content itself rather than searching for pre-defined title keywords.
  */
 class Linkiya_Matcher {
 
@@ -22,15 +26,7 @@ class Linkiya_Matcher {
 	 * @param  string $content          Raw post content (HTML from Gutenberg blocks).
 	 * @param  array  $keyword_map      Output of Linkiya_Keyword_Extractor::get_keyword_map().
 	 * @param  array  $meta_applied_ids Post IDs already linked, keyed by post ID.
-	 * @return array  Suggestions: [
-	 *   [
-	 *     'keyword'    => string,
-	 *     'post_id'    => int,
-	 *     'post_title' => string,
-	 *     'url'        => string,
-	 *   ],
-	 *   ...
-	 * ]
+	 * @return array  Suggestions.
 	 */
 	public static function find_suggestions( string $content, array $keyword_map, array $meta_applied_ids = array() ): array {
 
@@ -72,12 +68,32 @@ class Linkiya_Matcher {
 		// Strip heading tags — never suggest links for text that only appears in headings.
 		$stripped = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
 
-		// Get plain searchable text.
+		// Plain searchable text — used for topic extraction and anchor placement.
 		$plain_text = wp_strip_all_tags( $stripped );
 
-		// Flatten all (keyword, entry_index) pairs from the keyword map into one list,
-		// skipping posts that are already linked or excluded.
-		$all_candidates = array();
+		// --- Topic-driven matching ---
+		//
+		// Step 1: Extract topics (significant words + bigrams) from the current
+		// post's content. These represent what this article is ABOUT.
+		//
+		// Step 2: For each other post in the keyword map, check whether any of
+		// its keywords match a topic from the current content.
+		//
+		// This reverses the old approach (title keyword → content search) so that
+		// the content's meaning drives the suggestions, not the keyword map order.
+
+		$content_topics = self::extract_content_topics( $plain_text );
+
+		// Build a fast lookup: topic_string => frequency in content.
+		// Higher frequency = more central to the article's meaning.
+		$topic_lookup = array();
+		foreach ( $content_topics as $topic => $freq ) {
+			$topic_lookup[ strtolower( $topic ) ] = $freq;
+		}
+
+		// Score each post in the keyword map by how well its keywords match
+		// the content's topics. Score = sum of frequencies of matching topics.
+		$scored = array();
 		foreach ( $keyword_map as $idx => $entry ) {
 			if ( empty( $entry['post_id'] ) || empty( $entry['keywords'] ) || ! is_array( $entry['keywords'] ) ) {
 				continue;
@@ -86,57 +102,40 @@ class Linkiya_Matcher {
 			if ( isset( $meta_applied_ids[ $entry_id ] ) || isset( $already_linked_ids[ $entry_id ] ) ) {
 				continue;
 			}
+
+			$best_keyword = null;
+			$best_score   = 0;
+
 			foreach ( $entry['keywords'] as $keyword ) {
-				$all_candidates[] = array( $keyword, $idx );
-			}
-		}
+				$kw_lower = strtolower( $keyword );
 
-		// Sort all candidates globally so the most specific/matchable keywords win
-		// regardless of which post they come from or the post's position in the map.
-		// Priority: bigrams without digits > bigrams with digits > single words.
-		// Within each tier: longer first.
-		usort(
-			$all_candidates,
-			static function ( $a, $b ) {
-				$a_kw    = $a[0];
-				$b_kw    = $b[0];
-				$a_is_bi = strpos( $a_kw, ' ' ) !== false;
-				$b_is_bi = strpos( $b_kw, ' ' ) !== false;
-				$a_digit = (int) preg_match( '/\d/', $a_kw );
-				$b_digit = (int) preg_match( '/\d/', $b_kw );
-
-				// Tier: bigram-no-digit=0, bigram-with-digit=1, single=2.
-				$a_tier = $a_is_bi ? $a_digit : 2;
-				$b_tier = $b_is_bi ? $b_digit : 2;
-
-				if ( $a_tier !== $b_tier ) {
-					return $a_tier - $b_tier;
+				// Skip if already used as anchor text.
+				if ( isset( $already_linked_texts[ $kw_lower ] ) ) {
+					continue;
 				}
-				return strlen( $b_kw ) - strlen( $a_kw );
-			}
-		);
 
-		$suggestions      = array();
-		$matched_keywords = array();
-		$matched_post_ids = array();
+				// Check if this keyword exists verbatim in the content.
+				if ( ! self::keyword_exists_in_text( $keyword, $plain_text ) ) {
+					continue;
+				}
 
-		foreach ( $all_candidates as list( $keyword, $idx ) ) {
-			$entry    = $keyword_map[ $idx ];
-			$entry_id = (int) $entry['post_id'];
+				// Score = frequency of this keyword/topic in the content.
+				// Bigrams score higher than singles when frequency is equal
+				// because they are more specific.
+				$freq      = $topic_lookup[ $kw_lower ] ?? 1;
+				$is_bigram = strpos( $keyword, ' ' ) !== false;
+				$score     = $freq * ( $is_bigram ? 2 : 1 );
 
-			if ( isset( $matched_post_ids[ $entry_id ] ) ) {
-				continue; // Already have a suggestion for this post.
-			}
-			if ( isset( $matched_keywords[ $keyword ] ) ) {
-				continue; // Keyword already claimed by another post.
-			}
-			if ( isset( $already_linked_texts[ strtolower( $keyword ) ] ) ) {
-				continue;
+				if ( $score > $best_score ) {
+					$best_score   = $score;
+					$best_keyword = $keyword;
+				}
 			}
 
-			if ( self::keyword_exists_in_text( $keyword, $plain_text ) ) {
-				$suggestions[]                 = array(
-					'keyword'    => $keyword,
+			if ( null !== $best_keyword ) {
+				$scored[] = array(
+					'score'      => $best_score,
+					'keyword'    => $best_keyword,
 					'post_id'    => $entry['post_id'],
 					'post_title' => $entry['title'],
 					'post_type'  => $entry['post_type'] ?? 'post',
@@ -144,12 +143,86 @@ class Linkiya_Matcher {
 					'nofollow'   => ! empty( $entry['nofollow'] ),
 					'new_tab'    => ! empty( $entry['new_tab'] ),
 				);
-				$matched_keywords[ $keyword ]  = true;
-				$matched_post_ids[ $entry_id ] = true;
 			}
 		}
 
+		// Sort by score descending — posts whose keywords appear most frequently
+		// in the content (= most topically relevant) come first.
+		usort( $scored, fn( $a, $b ) => $b['score'] <=> $a['score'] );
+
+		// Deduplicate: one suggestion per keyword string across all posts.
+		$matched_keywords = array();
+		$suggestions      = array();
+
+		foreach ( $scored as $item ) {
+			if ( isset( $matched_keywords[ $item['keyword'] ] ) ) {
+				continue;
+			}
+			$matched_keywords[ $item['keyword'] ] = true;
+			unset( $item['score'] );
+			$suggestions[] = $item;
+		}
+
 		return $suggestions;
+	}
+
+	/**
+	 * Extract significant topics from the current post's plain text content.
+	 *
+	 * Returns an associative array of topic => frequency, where frequency
+	 * is how many times that word or bigram appears in the content.
+	 * Only terms meeting the minimum word length are included.
+	 * Stop words are excluded from singles but allowed as connectors in bigrams.
+	 *
+	 * @param  string $text Plain text content of the current post.
+	 * @return array<string, int> topic => frequency map.
+	 */
+	private static function extract_content_topics( string $text ): array {
+		$settings   = Linkiya_Settings::get();
+		$min_len    = max( 2, (int) ( $settings['min_word_length'] ?? 4 ) );
+		$stop_words = self::get_stop_words( $settings );
+
+		// Normalise: lowercase, strip punctuation, collapse whitespace.
+		$clean  = strtolower( preg_replace( '/[^\w\s]/u', ' ', str_replace( '-', '', $text ) ) );
+		$tokens = preg_split( '/\s+/', trim( $clean ), -1, PREG_SPLIT_NO_EMPTY );
+
+		$topics      = array();
+		$token_count = count( $tokens );
+
+		$is_content_token = static function ( string $t ) use ( $stop_words, $min_len ): bool {
+			return strlen( $t ) >= $min_len && ! isset( $stop_words[ $t ] );
+		};
+
+		// Count single-word frequencies.
+		foreach ( $tokens as $t ) {
+			if ( $is_content_token( $t ) ) {
+				$topics[ $t ] = ( $topics[ $t ] ?? 0 ) + 1;
+			}
+		}
+
+		// Count bigram frequencies — both tokens must be content tokens.
+		for ( $i = 0; $i < $token_count - 1; $i++ ) {
+			$a = $tokens[ $i ];
+			$b = $tokens[ $i + 1 ];
+			if ( $is_content_token( $a ) && $is_content_token( $b ) ) {
+				$bigram            = $a . ' ' . $b;
+				$topics[ $bigram ] = ( $topics[ $bigram ] ?? 0 ) + 1;
+			}
+		}
+
+		return $topics;
+	}
+
+	/**
+	 * Build stop word map from settings.
+	 *
+	 * @param  array $settings Linkiya settings array.
+	 * @return array<string, int>
+	 */
+	private static function get_stop_words( array $settings ): array {
+		$raw   = $settings['stop_words'] ?? '';
+		$words = array_filter( array_map( 'trim', explode( "\n", strtolower( $raw ) ) ) );
+		return array_fill_keys( array_values( $words ), 1 );
 	}
 
 	/**
