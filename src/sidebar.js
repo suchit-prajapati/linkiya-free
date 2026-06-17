@@ -283,7 +283,7 @@ function LinkiyaSidebar() {
                                         </Notice>
                                     </PanelRow>
                                     <PanelRow>
-                                        <Button variant="secondary" onClick={ runScan } style={ { width: '100%', justifyContent: 'center' } }>
+                                        <Button variant="secondary" onClick={ runAnalysis } style={ { width: '100%', justifyContent: 'center' } }>
                                             { __( 'Re-scan', 'linkiya' ) }
                                         </Button>
                                     </PanelRow>
