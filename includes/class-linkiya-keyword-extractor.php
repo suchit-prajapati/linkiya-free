@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Linkiya_Keyword_Extractor {
 
-	const CACHE_KEY    = 'linkiya_keyword_map_v5';
+	const CACHE_KEY    = 'linkiya_keyword_map_v6';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
 	/**
@@ -204,18 +204,16 @@ class Linkiya_Keyword_Extractor {
 			}
 
 			$bigrams = array();
-			$singles = array();
+			$singles = array(); // [ keyword, df ] pairs.
 
 			foreach ( $candidates as $kw ) {
 				$is_bigram = strpos( $kw, ' ' ) !== false;
 				$df        = $df_index[ $kw ] ?? 1;
 
 				if ( $is_bigram ) {
-					// Prefer bigrams without digits — sort them after collection.
 					$bigrams[] = $kw;
 				} elseif ( $df <= $df_limit_single ) {
-					// Single words: DF must be within limit.
-					$singles[] = $kw;
+					$singles[] = array( $kw, $df );
 				}
 			}
 
@@ -232,15 +230,21 @@ class Linkiya_Keyword_Extractor {
 				}
 			);
 
-			// Sort singles: longer first (longer = more specific / rarer).
-			usort( $singles, fn( $a, $b ) => strlen( $b ) - strlen( $a ) );
-
-			// Take top 3 bigrams and top 2 singles.
-			// Always include at least 1 single so a post body with just one keyword word can match.
-			$keywords = array_merge(
-				array_slice( $bigrams, 0, 3 ),
-				array_slice( $singles, 0, 2 )
+			// Sort singles: rarest first (lowest DF = most unique to this post), then longer first.
+			usort(
+				$singles,
+				static function ( $a, $b ) {
+					if ( $a[1] !== $b[1] ) {
+						return $a[1] - $b[1]; // rarest first.
+					}
+					return strlen( $b[0] ) - strlen( $a[0] );
+				}
 			);
+
+			// Take top 3 bigrams and top 2 singles (extract keyword string from pairs).
+			// Always include at least 1 single so a post body with just one keyword word can match.
+			$top_singles = array_map( fn( $s ) => $s[0], array_slice( $singles, 0, 2 ) );
+			$keywords    = array_merge( array_slice( $bigrams, 0, 3 ), $top_singles );
 
 			if ( empty( $keywords ) ) {
 				continue;
