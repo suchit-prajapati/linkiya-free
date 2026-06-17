@@ -3,6 +3,7 @@ import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar, PluginSidebarMoreMenuItem } from '@wordpress/edit-post';
 import { useState } from '@wordpress/element';
 import { dispatch, select } from '@wordpress/data';
+import { parse as parseBlocks } from '@wordpress/blocks';
 import {
     Button, CheckboxControl, Spinner, Notice, PanelBody, PanelRow, TextControl,
 } from '@wordpress/components';
@@ -147,8 +148,8 @@ function LinkiyaSidebar() {
             const data = await res.json();
             if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Apply failed', 'linkiya' ) );
 
-            // Push new content directly into the Gutenberg editor so it reflects immediately.
-            dispatch( 'core/editor' ).editPost( { content: data.new_content } );
+            // Parse new HTML into blocks and reset the editor so changes reflect immediately.
+            dispatch( 'core/block-editor' ).resetBlocks( parseBlocks( data.new_content ) );
 
             setAppliedCount( data.applied );
             setStatus( STATUS.APPLIED );
@@ -163,10 +164,10 @@ function LinkiyaSidebar() {
     const removeLinks = async () => {
         setStatus( STATUS.LOADING );
         try {
-            // Read current editor content (includes unsaved changes), strip all <a> tags, push back.
+            // Read current editor content (includes unsaved changes), strip all <a> tags, reset blocks.
             const current = select( 'core/editor' ).getEditedPostContent();
             const stripped = current.replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
-            dispatch( 'core/editor' ).editPost( { content: stripped } );
+            dispatch( 'core/block-editor' ).resetBlocks( parseBlocks( stripped ) );
 
             setSuggestions( [] );
             setChecked( {} );
