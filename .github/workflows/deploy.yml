@@ -37,3 +37,4 @@ jobs:
             .eslintrc*
             .editorconfig
             **/*.map
+            .phpcs.xml
