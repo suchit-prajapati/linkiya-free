@@ -47,10 +47,11 @@ function LinkiyaSidebar() {
     /* ── Keyword scan ─────────────────────────────────────────────── */
 
     const fetchKeywordSuggestions = async () => {
+        const currentContent = select( 'core/editor' ).getEditedPostContent();
         const res = await fetch( `${ linkiyaData.restUrl }/suggest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
-            body: JSON.stringify( { post_id: postId } ),
+            body: JSON.stringify( { post_id: postId, content: currentContent } ),
         } );
         const data = await res.json();
         if ( ! res.ok ) throw new Error( data.message || data.error || __( 'Server error', 'linkiya' ) );
