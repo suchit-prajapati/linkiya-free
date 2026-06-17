@@ -225,6 +225,19 @@ class Linkiya_Keyword_Extractor {
 		add_action( 'save_post', array( __CLASS__, 'invalidate_cache' ) );
 		add_action( 'delete_post', array( __CLASS__, 'invalidate_cache' ) );
 		add_action( 'trashed_post', array( __CLASS__, 'invalidate_cache' ) );
+		// After save the DB content is authoritative — clear the unsaved-state meta.
+		add_action( 'save_post', array( __CLASS__, 'clear_applied_ids_meta' ) );
+	}
+
+	/**
+	 * Clear applied-link post IDs meta after a post is saved.
+	 * After save, the DB content is the source of truth for already-linked detection.
+	 *
+	 * @param int $post_id Saved post ID.
+	 * @return void
+	 */
+	public static function clear_applied_ids_meta( int $post_id ): void {
+		delete_post_meta( $post_id, '_linkiya_applied_ids' );
 	}
 
 	/**

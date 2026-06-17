@@ -31,7 +31,7 @@ class Linkiya_Matcher {
 	 *   ...
 	 * ]
 	 */
-	public static function find_suggestions( string $content, array $keyword_map ): array {
+	public static function find_suggestions( string $content, array $keyword_map, array $meta_applied_ids = array() ): array {
 
 		// Normalize a URL for comparison: lowercase, strip protocol, www, and trailing slash.
 		$normalize_url = static function ( string $url ): string {
@@ -88,8 +88,8 @@ class Linkiya_Matcher {
 				continue;
 			}
 
-			// Skip posts already linked anywhere in the content.
-			if ( $entry_id > 0 && isset( $already_linked_ids[ $entry_id ] ) ) {
+			// Skip posts already linked — check meta first (most reliable), then content scan.
+			if ( $entry_id > 0 && ( isset( $meta_applied_ids[ $entry_id ] ) || isset( $already_linked_ids[ $entry_id ] ) ) ) {
 				continue;
 			}
 

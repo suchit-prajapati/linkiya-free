@@ -12,6 +12,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * POST /wp-json/linkiya/v1/suggest  — scans content, returns link suggestions
  * POST /wp-json/linkiya/v1/apply    — applies accepted links to content
+ * POST /wp-json/linkiya/v1/remove   — removes all links from post content
  * GET  /wp-json/linkiya/v1/status   — returns plugin status for sidebar
  */
 class Linkiya_REST_API {
@@ -56,6 +57,23 @@ class Linkiya_REST_API {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( __CLASS__, 'handle_apply' ),
+				'permission_callback' => array( __CLASS__, 'check_apply_permission' ),
+				'args'                => array(
+					'post_id' => array(
+						'required'          => true,
+						'validate_callback' => fn( $v ) => is_numeric( $v ) && $v > 0,
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/remove',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'handle_remove' ),
 				'permission_callback' => array( __CLASS__, 'check_apply_permission' ),
 				'args'                => array(
 					'post_id' => array(
@@ -217,6 +235,10 @@ class Linkiya_REST_API {
 			}
 		}
 
+		// Load post IDs already applied (tracked in meta, reliable even before post is saved).
+		$applied_ids = get_post_meta( $post_id, '_linkiya_applied_ids', true );
+		$applied_ids = is_array( $applied_ids ) ? array_flip( $applied_ids ) : array();
+
 		$post_types = apply_filters( 'linkiya_suggest_post_types', Linkiya_Keyword_Extractor::get_all_public_post_types(), $post_id );
 
 		$keyword_map = Linkiya_Keyword_Extractor::get_keyword_map( $post_id, $post_types );
@@ -224,7 +246,7 @@ class Linkiya_REST_API {
 		// Allow Pro plugin to extend keyword map.
 		$keyword_map = apply_filters( 'linkiya_keyword_map', $keyword_map, $post_id );
 
-		$suggestions = Linkiya_Matcher::find_suggestions( $content, $keyword_map );
+		$suggestions = Linkiya_Matcher::find_suggestions( $content, $keyword_map, $applied_ids );
 
 		// Max links — free setting.
 		$settings = Linkiya_Settings::get();
@@ -319,6 +341,14 @@ class Linkiya_REST_API {
 
 		$new_content = Linkiya_Matcher::apply_links( $content, $sanitized, $link_target, $link_rel );
 
+		// Track applied post IDs in meta so re-scans skip them even before the post is saved.
+		$applied_ids = array_filter( array_column( $sanitized, 'post_id' ) );
+		if ( ! empty( $applied_ids ) ) {
+			$existing = get_post_meta( $post_id, '_linkiya_applied_ids', true );
+			$existing = is_array( $existing ) ? $existing : array();
+			update_post_meta( $post_id, '_linkiya_applied_ids', array_values( array_unique( array_merge( $existing, $applied_ids ) ) ) );
+		}
+
 		// Allow Pro plugin to log applied links.
 		do_action( 'linkiya_links_applied', $post_id, $sanitized );
 
@@ -328,6 +358,53 @@ class Linkiya_REST_API {
 				'post_id'     => $post_id,
 				'new_content' => $new_content,
 				'applied'     => count( $sanitized ),
+			),
+			200
+		);
+	}
+
+	/* ── POST /linkiya/v1/remove ─────────────────────────────────── */
+
+	/**
+	 * Handle POST /linkiya/v1/remove.
+	 * Strips all <a> tags from post content and clears applied-IDs meta.
+	 *
+	 * @param WP_REST_Request $request Incoming REST request.
+	 * @return WP_REST_Response
+	 */
+	public static function handle_remove( WP_REST_Request $request ): WP_REST_Response {
+		$body    = $request->get_json_params();
+		$post_id = absint( $body['post_id'] ?? 0 );
+		$content = wp_unslash( (string) ( $body['content'] ?? '' ) );
+
+		if ( ! $post_id ) {
+			return new WP_REST_Response( array( 'error' => 'Invalid post_id.' ), 400 );
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return new WP_REST_Response( array( 'error' => 'Permission denied.' ), 403 );
+		}
+
+		// If no content passed from JS, read from DB.
+		if ( '' === $content ) {
+			$post = get_post( $post_id );
+			if ( $post ) {
+				$content = $post->post_content;
+			}
+		}
+
+		// Strip all <a> tags, preserving inner text.
+		$stripped = preg_replace( '/<a\b[^>]*>(.*?)<\/a>/is', '$1', $content );
+
+		// Clear the applied-IDs meta so re-scans start fresh.
+		delete_post_meta( $post_id, '_linkiya_applied_ids' );
+
+		do_action( 'linkiya_links_removed', $post_id );
+
+		return new WP_REST_Response(
+			array(
+				'success'         => true,
+				'post_id'         => $post_id,
+				'stripped_content' => $stripped,
 			),
 			200
 		);

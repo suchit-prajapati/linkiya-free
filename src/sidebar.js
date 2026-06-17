@@ -165,10 +165,16 @@ function LinkiyaSidebar() {
     const removeLinks = async () => {
         setStatus( STATUS.LOADING );
         try {
-            // Read current editor content (includes unsaved changes), strip all <a> tags, reset blocks.
             const current = select( 'core/editor' ).getEditedPostContent();
-            const stripped = current.replace( /<a\b[^>]*>(.*?)<\/a>/gis, '$1' );
-            dispatch( 'core/block-editor' ).resetBlocks( parseBlocks( stripped ) );
+            const res = await fetch( `${ linkiyaData.restUrl }/remove`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': linkiyaData.nonce },
+                body: JSON.stringify( { post_id: postId, content: current } ),
+            } );
+            const data = await res.json();
+            if ( ! res.ok ) throw new Error( data.error || __( 'Remove failed', 'linkiya' ) );
+
+            dispatch( 'core/block-editor' ).resetBlocks( parseBlocks( data.stripped_content ) );
 
             setSuggestions( [] );
             setChecked( {} );
