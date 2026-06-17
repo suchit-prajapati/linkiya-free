@@ -98,12 +98,12 @@ class Linkiya_Matcher {
 		usort(
 			$all_candidates,
 			static function ( $a, $b ) {
-				$a_kw      = $a[0];
-				$b_kw      = $b[0];
-				$a_is_bi   = strpos( $a_kw, ' ' ) !== false;
-				$b_is_bi   = strpos( $b_kw, ' ' ) !== false;
-				$a_digit   = (int) preg_match( '/\d/', $a_kw );
-				$b_digit   = (int) preg_match( '/\d/', $b_kw );
+				$a_kw    = $a[0];
+				$b_kw    = $b[0];
+				$a_is_bi = strpos( $a_kw, ' ' ) !== false;
+				$b_is_bi = strpos( $b_kw, ' ' ) !== false;
+				$a_digit = (int) preg_match( '/\d/', $a_kw );
+				$b_digit = (int) preg_match( '/\d/', $b_kw );
 
 				// Tier: bigram-no-digit=0, bigram-with-digit=1, single=2.
 				$a_tier = $a_is_bi ? $a_digit : 2;

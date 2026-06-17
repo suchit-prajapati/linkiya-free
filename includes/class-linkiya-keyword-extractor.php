@@ -213,11 +213,9 @@ class Linkiya_Keyword_Extractor {
 				if ( $is_bigram ) {
 					// Prefer bigrams without digits — sort them after collection.
 					$bigrams[] = $kw;
-				} else {
+				} elseif ( $df <= $df_limit_single ) {
 					// Single words: DF must be within limit.
-					if ( $df <= $df_limit_single ) {
-						$singles[] = $kw;
-					}
+					$singles[] = $kw;
 				}
 			}
 

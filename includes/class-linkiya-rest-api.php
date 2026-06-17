@@ -246,7 +246,7 @@ class Linkiya_REST_API {
 		// Allow Pro plugin to extend keyword map.
 		$keyword_map = apply_filters( 'linkiya_keyword_map', $keyword_map, $post_id );
 
-$suggestions = Linkiya_Matcher::find_suggestions( $content, $keyword_map, $applied_ids );
+		$suggestions = Linkiya_Matcher::find_suggestions( $content, $keyword_map, $applied_ids );
 
 		// Max links — free setting.
 		$settings     = Linkiya_Settings::get();
