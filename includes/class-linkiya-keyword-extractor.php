@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Linkiya_Keyword_Extractor {
 
-	const CACHE_KEY    = 'linkiya_keyword_map_v2';
+	const CACHE_KEY    = 'linkiya_keyword_map_v3';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
 	/**
