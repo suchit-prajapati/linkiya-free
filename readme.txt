@@ -28,19 +28,32 @@ Internal links are one of the most impactful on-page SEO improvements you can ma
 
 = Free Features =
 
-* **Gutenberg sidebar panel** — works natively inside the block editor
-* **Smart keyword matching** — extracts keywords and two-word phrases from published post titles
-* **Bigram matching** — "control anger" links before just "anger" for more precise suggestions
-* **Stop word filtering** — ignores common words like "the", "and", "how"
-* **Whole word matching** — never links partial words
-* **Review before applying** — check or uncheck each suggestion before applying
+**Smart Matching**
+* **Topic-driven matching** — analyses what your article is *about*, not just raw keyword presence. A post about Reiki finds the Reiki article even if the word appears only once
+* **Bigram matching** — two-word phrases like "control anger" are matched before single words for more precise, meaningful suggestions
+* **Frequency scoring** — keywords that appear more often in your content score higher, so the most relevant posts are suggested first
+* **Whole word matching** — never links partial words or substrings
+* **Stop word filtering** — ignores common words like "the", "and", "how" to keep suggestions meaningful
+* **Minimum keyword length** — set the minimum word length for matching
+* **Smart deduplication** — if "emotional boundaries" is already suggested, "emotional" alone is suppressed since it would produce no additional link
+
+**Workflow**
+* **Gutenberg sidebar panel** — works natively inside the block editor, no page reload needed
+* **Review before applying** — check or uncheck each suggestion before anything is written to your post
 * **Anchor text editing** — edit anchor text per suggestion before applying
-* **Max links per post** — limit how many suggestions appear per scan
-* **Link target setting** — configure target="_blank" globally
-* **nofollow / rel settings** — configure rel="nofollow", noopener, noreferrer
-* **Minimum keyword length** — set minimum word length for matching
-* **Post exclusion** — exclude specific posts from appearing as link targets
-* **Import / export settings** — back up and migrate your settings as JSON
+* **Remove all links** — strip all Linkiya-applied links from a post in one click
+* **Re-scan** — rescan after editing content without leaving the editor
+
+**Link Control**
+* **Max links per post** — limit how many suggestions appear per scan (0 = unlimited)
+* **Link target setting** — configure `target="_blank"` globally
+* **nofollow / rel settings** — configure `rel="nofollow"`, `noopener`, `noreferrer`
+* **Post exclusion** — exclude specific posts by ID from appearing as link targets
+* **Cross-type toggles** — control whether pages are suggested on posts and vice versa
+
+**Settings**
+* **Import / export settings** — back up and migrate your configuration as JSON
+* **Cache invalidation** — keyword map is automatically rebuilt whenever a post is saved, deleted, or settings change
 
 = Linkiya Pro =
 
@@ -90,6 +103,12 @@ Custom post type support is available in Linkiya Pro. The free version scans pos
 = Will it add links automatically without my review? =
 No. You always review and approve suggestions before they are applied. An optional Auto-Link mode is available in Pro, but it is opt-in and disabled by default.
 
+= How does topic-driven matching work? =
+Linkiya analyses the content of the post you are editing and extracts its main topics — the words and phrases that appear most frequently and meaningfully. It then finds other published posts whose titles cover those same topics, scoring them by relevance. The most relevant posts appear at the top of the suggestion list.
+
+= Does it suggest links based on my article's meaning, not just exact keywords? =
+Yes. The topic-driven engine scores suggestions by how frequently a keyword appears in your content, so posts that are genuinely relevant to what you are writing about rank higher than posts that only share a single incidental word.
+
 = Does it conflict with other SEO plugins? =
 No. Linkiya does not modify SEO meta data, sitemaps, or schema. It only adds anchor tags to your post content inside the block editor.
 
@@ -98,6 +117,9 @@ No. The plugin only runs inside the Gutenberg editor when you click Run Internal
 
 = Where is my data stored? =
 All data is stored in your own WordPress database. Linkiya does not connect to any external server.
+
+= How do I clear the keyword cache? =
+Go to **Linkiya → Settings** and click Save. This rebuilds the keyword map immediately.
 
 == Source Code ==
 
@@ -119,7 +141,7 @@ Linkiya Pro (a separate plugin sold at mypluginstore.com) optionally connects to
 
 == Screenshots ==
 
-1. Gutenberg sidebar panel showing link suggestions
+1. Gutenberg sidebar panel showing link suggestions with topic-driven matching
 2. Reviewing and selecting suggestions before applying
 3. Editing anchor text per suggestion
 4. Settings page — link attributes, exclusions, import and export
@@ -128,14 +150,20 @@ Linkiya Pro (a separate plugin sold at mypluginstore.com) optionally connects to
 
 = 1.0.0 =
 * Initial release of Linkiya
-* Gutenberg sidebar with smart keyword matching
-* Review before applying workflow
+* Topic-driven matching — suggestions based on article meaning and keyword frequency
+* Bigram matching — two-word phrases matched before single words
+* Smart deduplication — single words suppressed when already covered by a bigram suggestion
+* Gutenberg sidebar with review before applying workflow
 * Anchor text editing per suggestion
+* Remove all links in one click
 * Max links per post setting
 * Link target and rel settings
+* Cross-type suggestion toggles (pages on posts, posts on pages)
 * Post exclusion by ID
 * Minimum keyword length setting
+* Stop word configuration
 * Import and export settings as JSON
+* Automatic cache invalidation on post save, delete, and settings change
 
 == Upgrade Notice ==
 
