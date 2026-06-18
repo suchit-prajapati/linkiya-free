@@ -1,6 +1,6 @@
-=== Linkiya ===
+=== Linkiya – Internal Links & SEO Auto Linker for Gutenberg ===
 Contributors: suchitprajapati
-Tags: internal links, seo, gutenberg, internal linking, link building
+Tags: internal links, internal linking, seo, auto linker, link building
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
@@ -8,7 +8,7 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Automatically find and apply internal links inside the Gutenberg editor. Link kiya? Done.
+Automatically find and insert internal links in Gutenberg. Boost SEO with smart topic-driven internal linking — no manual work needed.
 
 == Description ==
 
