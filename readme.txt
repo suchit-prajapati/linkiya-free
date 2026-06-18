@@ -1,5 +1,5 @@
 === Linkiya ===
-Contributors: mypluginstore
+Contributors: suchitprajapati
 Tags: internal links, seo, gutenberg, internal linking, link building
 Requires at least: 6.0
 Tested up to: 7.0
