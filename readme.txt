@@ -141,10 +141,12 @@ Linkiya Pro (a separate plugin sold at mypluginstore.com) optionally connects to
 
 == Screenshots ==
 
-1. Gutenberg sidebar panel showing link suggestions with topic-driven matching
-2. Reviewing and selecting suggestions before applying
-3. Editing anchor text per suggestion
-4. Settings page — link attributes, exclusions, import and export
+1. Linkiya sidebar panel inside the Gutenberg editor
+2. Link suggestions list with topic-driven matching results
+3. Editing anchor text for a suggestion before applying
+4. Links applied to the post content with visible anchor tags
+5. Settings page — link attributes, exclusions, cross-type toggles
+6. Settings page — stop words, import and export
 
 == Changelog ==
 
