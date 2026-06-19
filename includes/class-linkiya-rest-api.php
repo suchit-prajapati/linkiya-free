@@ -252,8 +252,8 @@ class Linkiya_REST_API {
 		$settings     = Linkiya_Settings::get();
 		$current_type = get_post_type( $post_id );
 		$current_type = $current_type ? $current_type : 'post';
-		$show_pages   = ! empty( $settings['suggest_pages_on_posts'] );
-		$show_posts   = ! empty( $settings['suggest_posts_on_pages'] );
+		$show_pages   = '1' === ( $settings['suggest_pages_on_posts'] ?? '1' );
+		$show_posts   = '1' === ( $settings['suggest_posts_on_pages'] ?? '1' );
 
 		// Filter suggestions based on cross-type toggles.
 		if ( 'post' === $current_type && ! $show_pages ) {
