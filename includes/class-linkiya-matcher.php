@@ -134,14 +134,14 @@ class Linkiya_Matcher {
 		// post is indexed as "boundaries" (single), we can suggest "emotional boundaries"
 		// (bigram) if it appears in the body — but ONLY bigrams, never longer fragments.
 
-		$min_len     = Linkiya_Keyword_Extractor::get_min_word_len();
-		$stop_words  = Linkiya_Keyword_Extractor::get_stop_words();
+		$min_len      = Linkiya_Keyword_Extractor::get_min_word_len();
+		$stop_words   = Linkiya_Keyword_Extractor::get_stop_words();
 		$body_bigrams = Linkiya_Keyword_Extractor::tokens_to_ngrams(
 			Linkiya_Keyword_Extractor::tokenize( $searchable_text ),
 			$min_len,
 			$stop_words,
-			2, // max bigrams only
-			2  // min bigrams only
+			2, // Max bigrams only.
+			2  // Min bigrams only.
 		);
 
 		// Index bigrams by each content token they contain.
@@ -183,14 +183,14 @@ class Linkiya_Matcher {
 				// For single-word indexed keywords, also check if a body bigram
 				// containing that word exists — prefer the bigram as anchor text.
 				// e.g. post indexed "boundaries" + body has "emotional boundaries" → suggest bigram.
-				$candidates = array(); // anchor_lower => is_bigram_upgrade
+				$candidates = array(); // anchor_lower => is_bigram_upgrade.
 
 				if ( 1 === $n_words && ! empty( $token_to_bigrams[ $kw_lower ] ) ) {
 					foreach ( $token_to_bigrams[ $kw_lower ] as $bigram ) {
 						$bl = strtolower( $bigram );
 						if ( ! isset( $already_linked_texts[ $bl ] )
 							&& false !== self::keyword_exists_in_text( $bigram, $searchable_text ) ) {
-							$candidates[ $bl ] = true; // bigram upgrade
+							$candidates[ $bl ] = true; // Bigram upgrade.
 						}
 					}
 				}
@@ -219,9 +219,9 @@ class Linkiya_Matcher {
 						// Count how many tokens of the bigram appear in this post's title.
 						// "emotional boundaries" post title contains BOTH tokens → strong match.
 						// "emotional strength" post title contains only "emotional" → weaker.
-						$post_title_lower  = strtolower( $entry['title'] );
-						$anchor_tokens     = explode( ' ', $anchor_lower );
-						$title_token_hits  = 0;
+						$post_title_lower = strtolower( $entry['title'] );
+						$anchor_tokens    = explode( ' ', $anchor_lower );
+						$title_token_hits = 0;
 						foreach ( $anchor_tokens as $at ) {
 							if ( preg_match( '/\b' . preg_quote( $at, '/' ) . '\b/i', $post_title_lower ) ) {
 								++$title_token_hits;
@@ -252,7 +252,7 @@ class Linkiya_Matcher {
 					}
 
 					if ( $score > $best_score ) {
-						$best_score   = $score;
+						$best_score = $score;
 						// anchor_lower is either the bigram upgrade text or the flex-matched text.
 						$best_keyword = $anchor_lower;
 					}

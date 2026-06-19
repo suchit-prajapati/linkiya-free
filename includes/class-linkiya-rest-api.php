@@ -94,31 +94,6 @@ class Linkiya_REST_API {
 				'permission_callback' => fn() => current_user_can( 'edit_posts' ),
 			)
 		);
-
-		register_rest_route(
-			self::NAMESPACE,
-			'/debug-map',
-			array(
-				'methods'             => 'GET',
-				'callback'            => array( __CLASS__, 'handle_debug_map' ),
-				'permission_callback' => fn() => current_user_can( 'manage_options' ),
-			)
-		);
-	}
-
-	/**
-	 * Debug: dump keyword map filtered by title search. Remove before release.
-	 *
-	 * @param WP_REST_Request $request Request.
-	 * @return WP_REST_Response
-	 */
-	public static function handle_debug_map( WP_REST_Request $request ): WP_REST_Response {
-		$map    = Linkiya_Keyword_Extractor::get_keyword_map( 0 );
-		$search = strtolower( sanitize_text_field( $request->get_param( 'title' ) ?? '' ) );
-		if ( $search ) {
-			$map = array_values( array_filter( $map, fn( $e ) => str_contains( strtolower( $e['title'] ), $search ) ) );
-		}
-		return new WP_REST_Response( $map, 200 );
 	}
 
 	/**

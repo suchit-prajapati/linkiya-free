@@ -46,32 +46,145 @@ class Linkiya_Keyword_Extractor {
 	 * These are words that pass min_len but make poor anchor text.
 	 */
 	private static function get_builtin_stop_words(): array {
-		return array_flip( array(
-			// Articles / prepositions / conjunctions
-			'with', 'from', 'this', 'that', 'these', 'those', 'than', 'then',
-			'when', 'where', 'what', 'which', 'while', 'after', 'before',
-			'about', 'above', 'below', 'between', 'through', 'during', 'into',
-			'onto', 'upon', 'within', 'without', 'against', 'toward', 'towards',
-			'because', 'although', 'however', 'therefore', 'whether',
-			// Pronouns / determiners
-			'your', 'their', 'ours', 'mine', 'hers', 'himself', 'herself',
-			'itself', 'yourself', 'ourselves', 'themselves',
-			'here', 'there', 'where',
-			// Common weak verbs
-			'have', 'been', 'will', 'just', 'also', 'more', 'most', 'some',
-			'such', 'each', 'every', 'many', 'much', 'very', 'away', 'back',
-			'make', 'makes', 'making', 'made', 'take', 'takes', 'taking',
-			'help', 'helps', 'feel', 'feels', 'keep', 'keeps', 'come', 'goes',
-			'give', 'gives', 'want', 'wants', 'need', 'needs', 'show', 'shows',
-			'find', 'finds', 'says', 'said', 'know', 'knew', 'mean', 'means',
-			'push', 'pushing', 'hurt', 'hurts', 'hurting', 'setting', 'getting',
-			'putting', 'letting', 'trying', 'doing', 'being', 'having',
-			// Common filler nouns
-			'ways', 'tips', 'life', 'self', 'time', 'like', 'type', 'kind',
-			'part', 'side', 'case', 'form', 'term', 'area', 'role', 'step',
-		) );
+		return array_flip(
+			array(
+				// Articles, prepositions, conjunctions.
+				'with',
+				'from',
+				'this',
+				'that',
+				'these',
+				'those',
+				'than',
+				'then',
+				'when',
+				'where',
+				'what',
+				'which',
+				'while',
+				'after',
+				'before',
+				'about',
+				'above',
+				'below',
+				'between',
+				'through',
+				'during',
+				'into',
+				'onto',
+				'upon',
+				'within',
+				'without',
+				'against',
+				'toward',
+				'towards',
+				'because',
+				'although',
+				'however',
+				'therefore',
+				'whether',
+				// Pronouns, determiners.
+				'your',
+				'their',
+				'ours',
+				'mine',
+				'hers',
+				'himself',
+				'herself',
+				'itself',
+				'yourself',
+				'ourselves',
+				'themselves',
+				'here',
+				'there',
+				'where',
+				// Common weak verbs.
+				'have',
+				'been',
+				'will',
+				'just',
+				'also',
+				'more',
+				'most',
+				'some',
+				'such',
+				'each',
+				'every',
+				'many',
+				'much',
+				'very',
+				'away',
+				'back',
+				'make',
+				'makes',
+				'making',
+				'made',
+				'take',
+				'takes',
+				'taking',
+				'help',
+				'helps',
+				'feel',
+				'feels',
+				'keep',
+				'keeps',
+				'come',
+				'goes',
+				'give',
+				'gives',
+				'want',
+				'wants',
+				'need',
+				'needs',
+				'show',
+				'shows',
+				'find',
+				'finds',
+				'says',
+				'said',
+				'know',
+				'knew',
+				'mean',
+				'means',
+				'push',
+				'pushing',
+				'hurt',
+				'hurts',
+				'hurting',
+				'setting',
+				'getting',
+				'putting',
+				'letting',
+				'trying',
+				'doing',
+				'being',
+				'having',
+				// Common filler nouns.
+				'ways',
+				'tips',
+				'life',
+				'self',
+				'time',
+				'like',
+				'type',
+				'kind',
+				'part',
+				'side',
+				'case',
+				'form',
+				'term',
+				'area',
+				'role',
+				'step',
+			)
+		);
 	}
 
+	/**
+	 * Return the stop word map (O(1) lookup) built from built-ins merged with user settings.
+	 *
+	 * @return array<string, int>
+	 */
 	public static function get_stop_words(): array {
 		if ( null !== self::$stop_words_cache ) {
 			return self::$stop_words_cache;
@@ -84,7 +197,7 @@ class Linkiya_Keyword_Extractor {
 			array_map( 'trim', explode( "\n", strtolower( $raw ) ) )
 		);
 
-		$user_words = array_fill_keys( array_values( $words ), 1 );
+		$user_words             = array_fill_keys( array_values( $words ), 1 );
 		self::$stop_words_cache = array_merge( self::get_builtin_stop_words(), $user_words );
 		return self::$stop_words_cache;
 	}
@@ -245,9 +358,9 @@ class Linkiya_Keyword_Extractor {
 		);
 
 		// Pass 1 — extract all candidate keywords and build the corpus DF index.
-		$raw        = array(); // post_id => string[].
-		$raw_title  = array(); // post_id => string[] (title-only keywords, get guaranteed slots).
-		$df_index   = array(); // keyword => int (how many posts contain it).
+		$raw       = array(); // post_id => string[].
+		$raw_title = array(); // post_id => string[] (title-only keywords, get guaranteed slots).
+		$df_index  = array(); // keyword => int (how many posts contain it).
 
 		foreach ( $posts as $post ) {
 			$title_kws = self::extract_title_keywords( $post->post_title, $min_len, $stop_words );
@@ -409,8 +522,8 @@ class Linkiya_Keyword_Extractor {
 	 */
 	public static function extract_title_keywords( string $title, int $min_len, array $stop_words ): array {
 		// Strip subtitle after colon or em-dash — these are rarely the topic.
-		$core  = preg_split( '/[:\|—–]/', $title, 2 );
-		$title = trim( $core[0] );
+		$core   = preg_split( '/[:\|—–]/', $title, 2 );
+		$title  = trim( $core[0] );
 		$tokens = self::tokenize( $title );
 		// Remove pure-numeric tokens from title (e.g. "11" from "11 Practical Tips").
 		$tokens = array_values( array_filter( $tokens, fn( $t ) => ! ctype_digit( $t ) ) );
