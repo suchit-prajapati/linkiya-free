@@ -198,10 +198,10 @@ class Linkiya_Keyword_Extractor {
 		// DF thresholds — how many posts a keyword can appear in before being
 		// considered too common for its n-gram length.
 		$df_thresholds = array(
-			1 => max( 3, (int) round( $total_posts * 0.20 ) ),
-			2 => max( 5, (int) round( $total_posts * 0.35 ) ),
-			3 => max( 8, (int) round( $total_posts * 0.50 ) ),
-			4 => max( 10, (int) round( $total_posts * 0.65 ) ),
+			1 => max( 2, (int) round( $total_posts * 0.15 ) ),
+			2 => max( 3, (int) round( $total_posts * 0.25 ) ),
+			3 => max( 5, (int) round( $total_posts * 0.40 ) ),
+			4 => max( 7, (int) round( $total_posts * 0.55 ) ),
 		);
 
 		// Slot budget per post per n-gram tier.

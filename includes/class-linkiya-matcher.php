@@ -84,6 +84,11 @@ class Linkiya_Matcher {
 		$current_post_id    = get_the_ID();
 		$current_post_title = $current_post_id ? get_the_title( $current_post_id ) : '';
 
+		// Extend plain_text with the post title so verbatim keyword matching can
+		// find phrases that only appear in the title (e.g. "control anger").
+		// We append it rather than prepend so position bonus still favours body phrases.
+		$searchable_text = $plain_text . ' ' . $current_post_title;
+
 		// ── 3. Extract content topics with frequencies ─────────────────────────
 
 		// Extract from body first.
@@ -148,7 +153,7 @@ class Linkiya_Matcher {
 					continue;
 				}
 
-				if ( ! self::keyword_exists_in_text( $keyword, $plain_text ) ) {
+				if ( ! self::keyword_exists_in_text( $keyword, $searchable_text ) ) {
 					continue;
 				}
 
@@ -176,9 +181,9 @@ class Linkiya_Matcher {
 				}
 
 				// Position bonus: first occurrence in top 25% of text scores up to +40%.
-				$first_pos = mb_stripos( $plain_text, $keyword );
+				$first_pos = mb_stripos( $searchable_text, $keyword );
 				if ( false !== $first_pos ) {
-					$pos_ratio = $first_pos / max( 1, mb_strlen( $plain_text ) );
+					$pos_ratio = $first_pos / max( 1, mb_strlen( $searchable_text ) );
 					$score    *= 1.0 + max( 0.0, ( 0.25 - $pos_ratio ) * 1.6 );
 				}
 
@@ -250,16 +255,16 @@ class Linkiya_Matcher {
 				continue;
 			}
 
-			$both_present = self::keyword_exists_in_text( $top2[0], $plain_text )
-						&& self::keyword_exists_in_text( $top2[1], $plain_text );
+			$both_present = self::keyword_exists_in_text( $top2[0], $searchable_text )
+						&& self::keyword_exists_in_text( $top2[1], $searchable_text );
 
 			if ( ! $both_present ) {
 				continue;
 			}
 
-			// Verify the anchor keyword itself exists verbatim in body text.
+			// Verify the anchor keyword itself exists verbatim in searchable text.
 			$anchor_kw = $top2[0];
-			if ( ! self::keyword_exists_in_text( $anchor_kw, $plain_text ) ) {
+			if ( ! self::keyword_exists_in_text( $anchor_kw, $searchable_text ) ) {
 				continue;
 			}
 
