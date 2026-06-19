@@ -94,6 +94,35 @@ class Linkiya_REST_API {
 				'permission_callback' => fn() => current_user_can( 'edit_posts' ),
 			)
 		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/debug-map',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'handle_debug_map' ),
+				'permission_callback' => fn() => current_user_can( 'manage_options' ),
+			)
+		);
+	}
+
+	/**
+	 * Temporary debug endpoint — shows indexed keywords for a post ID.
+	 *
+	 * @param WP_REST_Request $request Incoming REST request.
+	 * @return WP_REST_Response
+	 */
+	public static function handle_debug_map( WP_REST_Request $request ): WP_REST_Response {
+		$post_id     = absint( $request->get_param( 'post_id' ) );
+		$post_types  = Linkiya_Keyword_Extractor::get_all_public_post_types();
+		$keyword_map = Linkiya_Keyword_Extractor::get_keyword_map( 0, $post_types );
+		$result      = array();
+		foreach ( $keyword_map as $kw => $entry ) {
+			if ( ! $post_id || (int) $entry['post_id'] === $post_id ) {
+				$result[ $kw ] = $entry;
+			}
+		}
+		return new WP_REST_Response( $result, 200 );
 	}
 
 	/**
