@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Linkiya_Keyword_Extractor {
 
-	const CACHE_KEY    = 'linkiya_keyword_map_v1';
+	const CACHE_KEY    = 'linkiya_keyword_map_v2';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
 	/**
@@ -313,7 +313,7 @@ class Linkiya_Keyword_Extractor {
 			foreach ( array( 4, 3, 2, 1 ) as $n ) {
 				$taken       = 0;
 				$title_taken = 0;
-				$title_slots = 2; // guaranteed title keyword slots per tier.
+				$title_slots = 3; // guaranteed title keyword slots per tier.
 				foreach ( $by_size[ $n ] as $item ) {
 					$at_body_limit  = ! $item['from_title'] && $taken >= $slot_budget[ $n ];
 					$at_title_limit = $item['from_title'] && $title_taken >= $title_slots;
