@@ -76,59 +76,126 @@
 	font-size: 12px;
 }
 
-/* Suggestions list */
+/* ── Suggestions list ──────────────────────────────────────── */
+
 .linkiya-suggestions-list {
 	margin: 4px 0 12px;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 6px;
 }
 
 .linkiya-suggestion-row {
-	padding: 8px 10px;
 	border: 1px solid #e5e7eb;
-	border-radius: 6px;
-	background: #f9fafb;
-	transition: background 0.15s;
+	border-radius: 8px;
+	background: #fff;
+	transition: border-color 0.15s, box-shadow 0.15s;
+	overflow: hidden;
 }
 
 .linkiya-suggestion-row:hover {
-	background: #f0f7ff;
-	border-color: #bfdbfe;
+	border-color: #93c5fd;
+	box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08);
 }
 
-.linkiya-suggestion-row .components-checkbox-control__label {
+.linkiya-suggestion-row--ai {
+	border-color: #c7d2fe;
+	background: #fafafa;
+}
+
+.linkiya-suggestion-row--ai:hover {
+	border-color: #a5b4fc;
+	box-shadow: 0 1px 4px rgba(79, 70, 229, 0.1);
+}
+
+/* ── Card inner layout ─────────────────────────────────────── */
+
+.linkiya-suggestion-main {
+	display: flex;
+	align-items: flex-start;
+	gap: 0;
+	padding: 10px 10px 8px 10px;
+}
+
+.linkiya-suggestion-main .components-base-control {
+	flex: 1;
+	margin-bottom: 0 !important;
+}
+
+.linkiya-suggestion-main .components-checkbox-control__label {
 	width: 100%;
 }
 
-/* Label inside checkbox */
+/* ── Card label content ────────────────────────────────────── */
+
 .linkiya-suggestion-label {
 	display: flex;
 	flex-direction: column;
-	gap: 3px;
+	gap: 5px;
 	width: 100%;
+}
+
+/* Top row: anchor chip + type badge */
+.linkiya-label-top {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
 }
 
 .linkiya-keyword {
 	font-weight: 700;
-	color: #1d4ed8;
+	color: #1e40af;
 	font-size: 13px;
 	background: #dbeafe;
-	padding: 1px 6px;
-	border-radius: 4px;
+	padding: 2px 8px;
+	border-radius: 20px;
 	display: inline-block;
 	width: fit-content;
+	letter-spacing: 0.01em;
 }
 
-.linkiya-arrow {
-	color: #9ca3af;
-	font-size: 11px;
+.linkiya-type-badge {
+	display: inline-flex;
+	align-items: center;
+	font-size: 10px;
+	font-weight: 700;
+	color: #6b7280;
+	background: #f3f4f6;
+	border: 1px solid #e5e7eb;
+	border-radius: 4px;
+	padding: 1px 5px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
 }
 
-.linkiya-post-title {
-	font-size: 11px;
-	color: #374151;
+.linkiya-type-badge--page {
+	color: #7c3aed;
+	background: #f5f3ff;
+	border-color: #ddd6fe;
+}
+
+/* Post title row */
+.linkiya-label-title {
+	font-size: 12px;
+	font-weight: 600;
+	color: #111827;
 	line-height: 1.4;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+}
+
+/* URL row */
+.linkiya-label-url {
+	font-size: 10px;
+	color: #9ca3af;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+	font-family: monospace;
 }
 
 .linkiya-cpt-badge {
@@ -144,92 +211,40 @@
 	width: fit-content;
 }
 
-/* Pro badge — sidebar panel */
-.linkiya-pro-badge {
-	background: linear-gradient(135deg, #059669, #10b981);
-	color: #fff;
-	font-size: 11px;
-	font-weight: 700;
-	padding: 4px 10px;
-	border-radius: 20px;
-	width: 100%;
-	text-align: center;
-}
-
-/* Pro badge — More Menu item */
-.linkiya-pro-menu-badge {
-	color: #10b981;
-	font-size: 10px;
-	font-weight: 700;
-	margin-left: 4px;
-}
-
-/* Free banner */
-.linkiya-free-banner {
-	background: #fffbeb;
-	border: 1px solid #fde68a;
-	border-radius: 6px;
-	padding: 8px 10px;
-	font-size: 11px;
-	color: #92400e;
-	width: 100%;
-	line-height: 1.5;
-}
-.linkiya-free-banner a { color: #b45309; font-weight: 700; }
-
-
-.linkiya-apply-row {
-	display: flex;
-	gap: 8px;
-	width: 100%;
-}
-
-.linkiya-apply-btn {
-	flex: 1;
-	justify-content: center !important;
-}
-
-.linkiya-rerun-btn {
-	flex-shrink: 0;
-}
-
-/* F4: Anchor text editing */
-.linkiya-suggestion-main {
-	display: flex;
-	align-items: flex-start;
-	gap: 4px;
-}
-
-.linkiya-suggestion-main .components-base-control {
-	flex: 1;
-}
+/* ── Edit anchor button ─────────────────────────────────────── */
 
 .linkiya-edit-anchor-btn {
 	background: none;
-	border: none;
+	border: 1px solid transparent;
+	border-radius: 4px;
 	cursor: pointer;
-	font-size: 12px;
-	padding: 4px;
-	opacity: 0.4;
-	transition: opacity 0.15s;
+	font-size: 13px;
+	padding: 3px 5px;
+	opacity: 0.35;
+	transition: opacity 0.15s, background 0.15s, border-color 0.15s;
 	flex-shrink: 0;
-	margin-top: 2px;
+	margin-top: 1px;
+	line-height: 1;
 }
 
 .linkiya-edit-anchor-btn:hover {
 	opacity: 1;
+	background: #f0f7ff;
+	border-color: #bfdbfe;
 }
 
 .linkiya-edit-anchor-btn.active {
 	opacity: 1;
+	background: #dbeafe;
+	border-color: #93c5fd;
 }
+
+/* ── Anchor text editor ────────────────────────────────────── */
 
 .linkiya-anchor-edit {
 	background: #f8fafc;
-	border: 1px solid #e2e8f0;
-	border-radius: 6px;
+	border-top: 1px solid #e5e7eb;
 	padding: 10px 12px;
-	margin: 6px 0 10px 24px;
 }
 
 .linkiya-anchor-edit .components-base-control__label {
@@ -250,7 +265,63 @@
 	margin-top: 4px;
 }
 
-/* Orphan teaser */
+/* ── Apply row ─────────────────────────────────────────────── */
+
+.linkiya-apply-row {
+	display: flex;
+	gap: 8px;
+	width: 100%;
+}
+
+.linkiya-apply-btn {
+	flex: 1;
+	justify-content: center !important;
+}
+
+.linkiya-rerun-btn {
+	flex-shrink: 0;
+}
+
+/* ── Pro badge ─────────────────────────────────────────────── */
+
+.linkiya-pro-badge {
+	background: linear-gradient(135deg, #059669, #10b981);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 4px 10px;
+	border-radius: 20px;
+	width: 100%;
+	text-align: center;
+}
+
+.linkiya-pro-menu-badge {
+	color: #10b981;
+	font-size: 10px;
+	font-weight: 700;
+	margin-left: 4px;
+}
+
+/* ── Free banner ───────────────────────────────────────────── */
+
+.linkiya-free-banner {
+	background: #fffbeb;
+	border: 1px solid #fde68a;
+	border-radius: 6px;
+	padding: 8px 10px;
+	font-size: 11px;
+	color: #92400e;
+	width: 100%;
+	line-height: 1.5;
+}
+
+.linkiya-free-banner a {
+	color: #b45309;
+	font-weight: 700;
+}
+
+/* ── Orphan teaser ─────────────────────────────────────────── */
+
 .linkiya-orphan-teaser {
 	background: #fffbeb;
 	border: 1px solid #fde68a;
@@ -276,16 +347,7 @@
 	margin-left: auto;
 }
 
-/* AI suggestions */
-.linkiya-suggestion-row--ai {
-	border-color: #c7d2fe;
-	background: #f5f3ff;
-}
-
-.linkiya-suggestion-row--ai:hover {
-	background: #ede9fe;
-	border-color: #a5b4fc;
-}
+/* ── AI styles ─────────────────────────────────────────────── */
 
 .linkiya-ai-badge {
 	display: inline-block;
@@ -304,9 +366,8 @@
 	font-size: 11px;
 	color: #6d28d9;
 	background: #ede9fe;
-	border-radius: 4px;
-	padding: 4px 8px;
-	margin: 4px 0 2px 24px;
+	border-top: 1px solid #e5e7eb;
+	padding: 6px 10px;
 	line-height: 1.4;
 }
 
@@ -328,4 +389,11 @@
 	color: #4f46e5;
 	font-size: 11px;
 	font-weight: 600;
+}
+
+/* ── Remove button ─────────────────────────────────────────── */
+
+.linkiya-remove-btn {
+	width: 100%;
+	justify-content: center !important;
 }

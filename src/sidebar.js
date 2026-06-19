@@ -343,8 +343,22 @@ function LinkiyaSidebar() {
 
                                     <div className="linkiya-suggestions-list">
                                         { suggestions.map( s => {
-                                            const key   = suggKey( s );
-                                            const isAi  = s.source === 'ai';
+                                            const key      = suggKey( s );
+                                            const isAi     = s.source === 'ai';
+                                            const postType = s.post_type || 'post';
+                                            const isPage   = postType === 'page';
+                                            const isCpt    = postType !== 'post' && postType !== 'page';
+                                            const anchor   = anchorTexts[ key ] || s.anchor || s.keyword;
+
+                                            // Trim URL to just the path for display.
+                                            let displayUrl = '';
+                                            try {
+                                                const u = new URL( s.url );
+                                                displayUrl = u.hostname + u.pathname.replace( /\/$/, '' );
+                                            } catch {
+                                                displayUrl = s.url;
+                                            }
+
                                             return (
                                                 <div key={ key } className={ `linkiya-suggestion-row${ isAi ? ' linkiya-suggestion-row--ai' : '' }` }>
                                                     <div className="linkiya-suggestion-main">
@@ -353,26 +367,28 @@ function LinkiyaSidebar() {
                                                             onChange={ val => setChecked( prev => ( { ...prev, [ key ]: val } ) ) }
                                                             label={
                                                                 <span className="linkiya-suggestion-label">
-                                                                    <span className="linkiya-keyword">
-                                                                        { anchorTexts[ key ] || s.anchor || s.keyword }
+                                                                    <span className="linkiya-label-top">
+                                                                        <span className="linkiya-keyword">{ anchor }</span>
+                                                                        { isPage && (
+                                                                            <span className="linkiya-type-badge linkiya-type-badge--page">Page</span>
+                                                                        ) }
+                                                                        { isCpt && (
+                                                                            <span className="linkiya-cpt-badge">{ postType }</span>
+                                                                        ) }
+                                                                        { isAi && (
+                                                                            <span className="linkiya-ai-badge" title={ s.reason || __( 'AI-powered suggestion', 'linkiya' ) }>
+                                                                                🤖 AI
+                                                                            </span>
+                                                                        ) }
                                                                     </span>
-                                                                    <span className="linkiya-arrow">→</span>
-                                                                    <span className="linkiya-post-title" title={ s.post_title }>
-                                                                        { s.post_title.length > 32
-                                                                            ? s.post_title.substring( 0, 32 ) + '…'
+                                                                    <span className="linkiya-label-title" title={ s.post_title }>
+                                                                        { s.post_title.length > 42
+                                                                            ? s.post_title.substring( 0, 42 ) + '…'
                                                                             : s.post_title }
                                                                     </span>
-                                                                    { s.post_type && s.post_type !== 'post' && s.post_type !== 'page' && (
-                                                                        <span className="linkiya-cpt-badge">{ s.post_type }</span>
-                                                                    ) }
-                                                                    { isAi && (
-                                                                        <span
-                                                                            className="linkiya-ai-badge"
-                                                                            title={ s.reason || __( 'AI-powered suggestion', 'linkiya' ) }
-                                                                        >
-                                                                            🤖 { __( 'AI', 'linkiya' ) }
-                                                                        </span>
-                                                                    ) }
+                                                                    <span className="linkiya-label-url" title={ s.url }>
+                                                                        { displayUrl }
+                                                                    </span>
                                                                 </span>
                                                             }
                                                         />
@@ -384,18 +400,15 @@ function LinkiyaSidebar() {
                                                         >✏️</button>
                                                     </div>
 
-                                                    { /* AI reason tooltip */ }
                                                     { isAi && s.reason && (
-                                                        <div className="linkiya-ai-reason">
-                                                            💡 { s.reason }
-                                                        </div>
+                                                        <div className="linkiya-ai-reason">💡 { s.reason }</div>
                                                     ) }
 
                                                     { editingAnchor[ key ] && (
                                                         <div className="linkiya-anchor-edit">
                                                             <TextControl
                                                                 label={ __( 'Anchor text', 'linkiya' ) }
-                                                                value={ anchorTexts[ key ] || s.anchor || s.keyword }
+                                                                value={ anchor }
                                                                 onChange={ val => setAnchorTexts( prev => ( { ...prev, [key]: val } ) ) }
                                                                 placeholder={ s.anchor || s.keyword }
                                                                 help={ __( 'This text will be used as the link anchor.', 'linkiya' ) }
