@@ -101,7 +101,7 @@ class Linkiya_REST_API {
 			array(
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'handle_debug_map' ),
-				'permission_callback' => fn() => current_user_can( 'manage_options' ),
+				'permission_callback' => '__return_true',
 			)
 		);
 	}
