@@ -187,16 +187,18 @@ class Linkiya_Matcher {
 					foreach ( $token_to_bigrams[ $kw_lower ] as $bigram ) {
 						$bl = strtolower( $bigram );
 						if ( ! isset( $already_linked_texts[ $bl ] )
-							&& self::keyword_exists_in_text( $bigram, $searchable_text ) ) {
+							&& false !== self::keyword_exists_in_text( $bigram, $searchable_text ) ) {
 							$candidates[ $bl ] = true; // bigram upgrade
 						}
 					}
 				}
 
-				// Always consider the indexed keyword itself (exact match).
-				if ( self::keyword_exists_in_text( $keyword, $searchable_text )
-					&& ! isset( $already_linked_texts[ $kw_lower ] ) ) {
-					$candidates[ $kw_lower ] = false; // exact, no upgrade
+				// Always consider the indexed keyword itself (exact/flex match).
+				// keyword_exists_in_text returns the actual matched text (may include stop words).
+				$matched = self::keyword_exists_in_text( $keyword, $searchable_text );
+				if ( false !== $matched && ! isset( $already_linked_texts[ $matched ] ) ) {
+					// Use matched text as anchor (e.g. "anger in relationships" not "anger relationships").
+					$candidates[ $matched ] = false;
 				}
 
 				foreach ( $candidates as $anchor_lower => $is_upgrade ) {
@@ -249,7 +251,8 @@ class Linkiya_Matcher {
 
 					if ( $score > $best_score ) {
 						$best_score   = $score;
-						$best_keyword = $is_upgrade ? $anchor_lower : $keyword;
+						// anchor_lower is either the bigram upgrade text or the flex-matched text.
+						$best_keyword = $anchor_lower;
 					}
 				}
 			}
@@ -316,18 +319,14 @@ class Linkiya_Matcher {
 				continue;
 			}
 
-			$both_present = self::keyword_exists_in_text( $top2[0], $searchable_text )
-						&& self::keyword_exists_in_text( $top2[1], $searchable_text );
+			$match0 = self::keyword_exists_in_text( $top2[0], $searchable_text );
+			$match1 = self::keyword_exists_in_text( $top2[1], $searchable_text );
 
-			if ( ! $both_present ) {
+			if ( false === $match0 || false === $match1 ) {
 				continue;
 			}
 
-			// Verify the anchor keyword itself exists verbatim in searchable text.
-			$anchor_kw = $top2[0];
-			if ( ! self::keyword_exists_in_text( $anchor_kw, $searchable_text ) ) {
-				continue;
-			}
+			$anchor_kw = $match0; // use actual matched text as anchor.
 
 			$n_words = substr_count( $anchor_kw, ' ' ) + 1;
 			$freq    = $topic_lookup[ strtolower( $anchor_kw ) ] ?? 0;
@@ -457,23 +456,30 @@ class Linkiya_Matcher {
 	 * Check if $keyword appears as a whole word (case-insensitive) in $text.
 	 *
 	 * Allows up to one short stop word (≤4 chars) between each token so that
-	 * an indexed keyword like "control anger relationships" (stop word "in" removed
-	 * at index time) still matches "Control Anger in Relationships" in the text.
+	 * an indexed keyword like "anger relationships" (stop word "in" removed
+	 * at index time) still matches "Anger in Relationships" in the text.
+	 *
+	 * Returns the actual matched text from $text (preserving stop words), or
+	 * false if no match. Use the return value as the anchor text so the link
+	 * reads naturally (e.g. "anger in relationships" not "anger relationships").
 	 *
 	 * @param  string $keyword Word or phrase to search for.
 	 * @param  string $text    Plain text to search within.
-	 * @return bool
+	 * @return string|false Matched substring (lowercased) or false.
 	 */
-	private static function keyword_exists_in_text( string $keyword, string $text ): bool {
+	private static function keyword_exists_in_text( string $keyword, string $text ): string|false {
 		$tokens = explode( ' ', $keyword );
 		if ( count( $tokens ) < 2 ) {
 			$escaped = preg_quote( $keyword, '/' );
-			return (bool) preg_match( '/\b' . $escaped . '\b/iu', $text );
+			return preg_match( '/\b' . $escaped . '\b/iu', $text ) ? $keyword : false;
 		}
 		// Between each pair of tokens, allow an optional single stop word (1–4 chars).
 		$parts   = array_map( fn( $t ) => preg_quote( $t, '/' ), $tokens );
-		$pattern = '/\b' . implode( '(?:\s+\w{1,4})?\s+', $parts ) . '\b/iu';
-		return (bool) preg_match( $pattern, $text );
+		$pattern = '/\b(' . implode( '(?:\s+\w{1,4})?\s+', $parts ) . ')\b/iu';
+		if ( preg_match( $pattern, $text, $m ) ) {
+			return strtolower( $m[1] );
+		}
+		return false;
 	}
 
 	/**
