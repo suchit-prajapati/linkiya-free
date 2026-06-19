@@ -10,13 +10,25 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Linkiya_Matcher
  *
- * Extracts the main topics of the current post's content, then finds
- * other published posts whose keywords cover those topics.
+ * Scoring pipeline (find_suggestions):
  *
- * Matching direction: content topics → keyword map (topic-driven).
- * This means a post about "Reiki" finds the Reiki article even if
- * the word only appears once, because the topic is extracted from
- * the content itself rather than searching for pre-defined title keywords.
+ *   1. Strip existing links and headings from content → plain text.
+ *   2. Extract content topics (singles + bigrams + trigrams + quadgrams)
+ *      with per-term frequency counts.
+ *   3. For each post in the keyword map, find the best-scoring keyword that
+ *      exists verbatim in the plain text.
+ *
+ * Score formula per keyword:
+ *   TF   = freq_in_content / total_content_words
+ *   IDF  = stored in keyword map (computed at index time, Laplace-smoothed)
+ *   base = TF × IDF
+ *   ×    n-gram length bonus    (quad ×2.0 / tri ×1.6 / bi ×1.3 / single ×1.0)
+ *   ×    position bonus         (up to +40% for first occurrence in top 25% of text)
+ *   ×    taxonomy overlap bonus (×1.0–×1.6 based on shared categories/tags)
+ *   —    single-word gate       (singles must appear ≥2 times or are skipped)
+ *
+ * Deduplication: any keyword whose every token is already covered by a
+ * longer accepted phrase is suppressed.
  */
 class Linkiya_Matcher {
 
@@ -30,7 +42,8 @@ class Linkiya_Matcher {
 	 */
 	public static function find_suggestions( string $content, array $keyword_map, array $meta_applied_ids = array() ): array {
 
-		// Normalize a URL for comparison: lowercase, strip protocol, www, and trailing slash.
+		// ── 1. Collect already-linked post IDs and anchor texts ───────────────
+
 		$normalize_url = static function ( string $url ): string {
 			$url = strtolower( trim( $url ) );
 			$url = preg_replace( '#^https?://#', '', $url );
@@ -38,7 +51,6 @@ class Linkiya_Matcher {
 			return rtrim( $url, '/' );
 		};
 
-		// Collect post IDs already linked anywhere in the content.
 		$already_linked_ids = array();
 		if ( preg_match_all( '/<a\b[^>]*\bhref=["\']([^"\']+)["\'][^>]*>/is', $content, $href_matches ) ) {
 			foreach ( $href_matches[1] as $href ) {
@@ -51,7 +63,6 @@ class Linkiya_Matcher {
 			}
 		}
 
-		// Collect anchor texts already linked as a fallback for URL-mismatch cases.
 		$already_linked_texts = array();
 		if ( preg_match_all( '/<a\b[^>]*>(.*?)<\/a>/is', $content, $anchor_matches ) ) {
 			foreach ( $anchor_matches[1] as $anchor_html ) {
@@ -62,69 +73,97 @@ class Linkiya_Matcher {
 			}
 		}
 
-		// Strip existing <a>…</a> so we don't re-suggest already-linked text.
-		$stripped = preg_replace( '/<a\b[^>]*>.*?<\/a>/is', ' LINKED_PLACEHOLDER ', $content );
+		// ── 2. Prepare plain text for topic extraction ─────────────────────────
 
-		// Strip heading tags — never suggest links for text that only appears in headings.
-		$stripped = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
-
-		// Plain searchable text — used for topic extraction and anchor placement.
+		$stripped   = preg_replace( '/<a\b[^>]*>.*?<\/a>/is', ' LINKED_PLACEHOLDER ', $content );
+		$stripped   = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
 		$plain_text = wp_strip_all_tags( $stripped );
 
-		// --- Topic-driven matching ---
-		//
-		// Step 1: Extract topics (significant words + bigrams) from the current
-		// post's content. These represent what this article is ABOUT.
-		//
-		// Step 2: For each other post in the keyword map, check whether any of
-		// its keywords match a topic from the current content.
-		//
-		// This reverses the old approach (title keyword → content search) so that
-		// the content's meaning drives the suggestions, not the keyword map order.
+		// ── 3. Extract content topics with frequencies ─────────────────────────
 
 		$content_topics = self::extract_content_topics( $plain_text );
 
-		// Build a fast lookup: topic_string => frequency in content.
-		// Higher frequency = more central to the article's meaning.
 		$topic_lookup = array();
 		foreach ( $content_topics as $topic => $freq ) {
 			$topic_lookup[ strtolower( $topic ) ] = $freq;
 		}
 
-		// Score each post in the keyword map by how well its keywords match
-		// the content's topics. Score = sum of frequencies of matching topics.
-		$scored = array();
-		foreach ( $keyword_map as $idx => $entry ) {
+		$total_words = max( 1, str_word_count( $plain_text ) );
+
+		// ── 4. Load current post's taxonomy terms for overlap scoring ──────────
+
+		$current_post_id   = get_the_ID();
+		$current_tax_terms = array();
+
+		if ( $current_post_id ) {
+			$raw_current = wp_get_post_terms(
+				$current_post_id,
+				array( 'category', 'post_tag' ),
+				array( 'fields' => 'names' )
+			);
+			if ( ! is_wp_error( $raw_current ) ) {
+				$current_tax_terms = array_map( 'strtolower', $raw_current );
+			}
+		}
+
+		// ── 5. Score each post in the keyword map ─────────────────────────────
+
+		$scored         = array();
+		$already_scored = array();
+
+		foreach ( $keyword_map as $entry ) {
 			if ( empty( $entry['post_id'] ) || empty( $entry['keywords'] ) || ! is_array( $entry['keywords'] ) ) {
 				continue;
 			}
+
 			$entry_id = (int) $entry['post_id'];
+
 			if ( isset( $meta_applied_ids[ $entry_id ] ) || isset( $already_linked_ids[ $entry_id ] ) ) {
 				continue;
 			}
 
+			$idf_weights  = is_array( $entry['idf_weights'] ?? null ) ? $entry['idf_weights'] : array();
 			$best_keyword = null;
-			$best_score   = 0;
+			$best_score   = 0.0;
 
 			foreach ( $entry['keywords'] as $keyword ) {
 				$kw_lower = strtolower( $keyword );
 
-				// Skip if already used as anchor text.
 				if ( isset( $already_linked_texts[ $kw_lower ] ) ) {
 					continue;
 				}
 
-				// Check if this keyword exists verbatim in the content.
 				if ( ! self::keyword_exists_in_text( $keyword, $plain_text ) ) {
 					continue;
 				}
 
-				// Score = frequency of this keyword/topic in the content.
-				// Bigrams score higher than singles when frequency is equal
-				// because they are more specific.
-				$freq      = $topic_lookup[ $kw_lower ] ?? 1;
-				$is_bigram = strpos( $keyword, ' ' ) !== false;
-				$score     = $freq * ( $is_bigram ? 2 : 1 );
+				$n_words = substr_count( $keyword, ' ' ) + 1;
+				$freq    = $topic_lookup[ $kw_lower ] ?? 1;
+
+				// Single-word gate: must appear at least 2 times to reduce false positives.
+				if ( 1 === $n_words && $freq < 2 ) {
+					continue;
+				}
+
+				$tf    = $freq / $total_words;
+				$idf   = $idf_weights[ $keyword ] ?? ( log( 2.0 ) + 1.0 );
+				$score = $tf * $idf;
+
+				// N-gram length bonus: longer phrases are more specific.
+				if ( $n_words >= 4 ) {
+					$score *= 2.0;
+				} elseif ( 3 === $n_words ) {
+					$score *= 1.6;
+				} elseif ( 2 === $n_words ) {
+					$score *= 1.3;
+				}
+
+				// Position bonus: first occurrence in top 25% of text scores up to +40%.
+				$first_pos = mb_stripos( $plain_text, $keyword );
+				if ( false !== $first_pos ) {
+					$pos_ratio = $first_pos / max( 1, mb_strlen( $plain_text ) );
+					$score    *= 1.0 + max( 0.0, ( 0.25 - $pos_ratio ) * 1.6 );
+				}
 
 				if ( $score > $best_score ) {
 					$best_score   = $score;
@@ -133,7 +172,16 @@ class Linkiya_Matcher {
 			}
 
 			if ( null !== $best_keyword ) {
-				$scored[] = array(
+				// Taxonomy overlap bonus — each shared category/tag adds 20%, capped at ×1.6.
+				if ( ! empty( $current_tax_terms ) ) {
+					$candidate_terms = is_array( $entry['taxonomy_terms'] ?? null )
+						? $entry['taxonomy_terms']
+						: array();
+					$overlap_count   = count( array_intersect( $current_tax_terms, $candidate_terms ) );
+					$best_score     *= 1.0 + min( $overlap_count * 0.2, 0.6 );
+				}
+
+				$scored[]                    = array(
 					'score'      => $best_score,
 					'keyword'    => $best_keyword,
 					'post_id'    => $entry['post_id'],
@@ -143,20 +191,94 @@ class Linkiya_Matcher {
 					'nofollow'   => ! empty( $entry['nofollow'] ),
 					'new_tab'    => ! empty( $entry['new_tab'] ),
 				);
+				$already_scored[ $entry_id ] = true;
 			}
 		}
 
-		// Sort by score descending — posts whose keywords appear most frequently
-		// in the content (= most topically relevant) come first.
+		// ── 6. Partial-phrase fallback ─────────────────────────────────────────
+		//
+		// For posts that scored zero above (no keyword appeared verbatim), check
+		// whether their two rarest keywords BOTH appear individually in the content.
+		// If yes, and the anchor keyword also appears verbatim, suggest it at 60%
+		// confidence. Catches related posts that share concepts but not exact phrases.
+
+		foreach ( $keyword_map as $entry ) {
+			if ( empty( $entry['post_id'] ) || empty( $entry['keywords'] ) ) {
+				continue;
+			}
+
+			$entry_id = (int) $entry['post_id'];
+
+			if ( isset( $already_scored[ $entry_id ] )
+				|| isset( $meta_applied_ids[ $entry_id ] )
+				|| isset( $already_linked_ids[ $entry_id ] ) ) {
+				continue;
+			}
+
+			$idf_weights = is_array( $entry['idf_weights'] ?? null ) ? $entry['idf_weights'] : array();
+
+			// Sort keywords by IDF descending (rarest first).
+			$ranked = $entry['keywords'];
+			usort(
+				$ranked,
+				static function ( $a, $b ) use ( $idf_weights ) {
+					$ia = $idf_weights[ $a ] ?? 1.0;
+					$ib = $idf_weights[ $b ] ?? 1.0;
+					return $ib <=> $ia;
+				}
+			);
+
+			$top2 = array_slice( $ranked, 0, 2 );
+			if ( count( $top2 ) < 2 ) {
+				continue;
+			}
+
+			$both_present = self::keyword_exists_in_text( $top2[0], $plain_text )
+						&& self::keyword_exists_in_text( $top2[1], $plain_text );
+
+			if ( ! $both_present ) {
+				continue;
+			}
+
+			// Bug 1 fix: verify the anchor keyword itself exists verbatim in the content.
+			$anchor_kw = $top2[0];
+			if ( ! self::keyword_exists_in_text( $anchor_kw, $plain_text ) ) {
+				continue;
+			}
+
+			$n_words = substr_count( $anchor_kw, ' ' ) + 1;
+			$freq    = $topic_lookup[ strtolower( $anchor_kw ) ] ?? 0;
+
+			// Single-word partial matches require ≥2 occurrences to reduce noise.
+			if ( 1 === $n_words && $freq < 2 ) {
+				continue;
+			}
+
+			$base_idf = $idf_weights[ $anchor_kw ] ?? ( log( 2.0 ) + 1.0 );
+			$scored[] = array(
+				'score'      => 0.6 * $base_idf,
+				'keyword'    => $anchor_kw,
+				'post_id'    => $entry['post_id'],
+				'post_title' => $entry['title'],
+				'post_type'  => $entry['post_type'] ?? 'post',
+				'url'        => $entry['url'],
+				'nofollow'   => ! empty( $entry['nofollow'] ),
+				'new_tab'    => ! empty( $entry['new_tab'] ),
+			);
+		}
+
+		// ── 7. Sort by score descending ────────────────────────────────────────
+
 		usort( $scored, fn( $a, $b ) => $b['score'] <=> $a['score'] );
 
-		// Deduplicate: one suggestion per keyword string across all posts.
-		// Also drop any single-word suggestion whose word is already fully covered
-		// by an accepted bigram suggestion — e.g. if "emotional boundaries" is
-		// already accepted, "emotional" on its own would produce no visible link
-		// because link_first_occurrence() never links inside an existing <a> tag.
+		// ── 8. Deduplicate and suppress covered keywords ───────────────────────
+		//
+		// If every token of keyword A is already present as a whole word inside
+		// an accepted longer keyword B, suppress A — it would link the same text
+		// that B already covers.
+
 		$matched_keywords = array();
-		$accepted_bigrams = array(); // bigram keywords already in suggestions.
+		$accepted_phrases = array();
 		$suggestions      = array();
 
 		foreach ( $scored as $item ) {
@@ -166,22 +288,29 @@ class Linkiya_Matcher {
 				continue;
 			}
 
-			// If this is a single word, skip it when a higher-scored bigram
-			// containing this word is already in the suggestion list.
-			$is_single = strpos( $kw, ' ' ) === false;
-			if ( $is_single ) {
-				foreach ( $accepted_bigrams as $bigram ) {
-					// Check if the single word appears as a whole word inside the bigram.
-					if ( preg_match( '/\b' . preg_quote( $kw, '/' ) . '\b/i', $bigram ) ) {
-						continue 2; // Skip this single — already covered by the bigram.
+			$kw_tokens  = explode( ' ', $kw );
+			$is_covered = false;
+
+			foreach ( $accepted_phrases as $accepted ) {
+				$all_in = true;
+				foreach ( $kw_tokens as $token ) {
+					if ( ! preg_match( '/\b' . preg_quote( $token, '/' ) . '\b/i', $accepted ) ) {
+						$all_in = false;
+						break;
 					}
+				}
+				if ( $all_in ) {
+					$is_covered = true;
+					break;
 				}
 			}
 
-			$matched_keywords[ $kw ] = true;
-			if ( ! $is_single ) {
-				$accepted_bigrams[] = $kw;
+			if ( $is_covered ) {
+				continue;
 			}
+
+			$matched_keywords[ $kw ] = true;
+			$accepted_phrases[]      = $kw;
 			unset( $item['score'] );
 			$suggestions[] = $item;
 		}
@@ -192,60 +321,53 @@ class Linkiya_Matcher {
 	/**
 	 * Extract significant topics from the current post's plain text content.
 	 *
-	 * Returns an associative array of topic => frequency, where frequency
-	 * is how many times that word or bigram appears in the content.
-	 * Only terms meeting the minimum word length are included.
-	 * Stop words are excluded from singles but allowed as connectors in bigrams.
+	 * Returns topic => frequency map for singles, bigrams, trigrams, and quadgrams.
+	 * Uses the same tokenization and content-token rules as the keyword extractor
+	 * so that keyword map terms and content topics align perfectly.
 	 *
 	 * @param  string $text Plain text content of the current post.
 	 * @return array<string, int> topic => frequency map.
 	 */
 	private static function extract_content_topics( string $text ): array {
-		$settings   = Linkiya_Settings::get();
-		$min_len    = max( 2, (int) ( $settings['min_word_length'] ?? 4 ) );
-		$stop_words = self::get_stop_words( $settings );
+		$min_len    = Linkiya_Keyword_Extractor::get_min_word_len();
+		$stop_words = Linkiya_Keyword_Extractor::get_stop_words();
+		$tokens     = Linkiya_Keyword_Extractor::tokenize( $text );
 
-		// Normalise: lowercase, strip punctuation, collapse whitespace.
-		$clean  = strtolower( preg_replace( '/[^\w\s]/u', ' ', str_replace( '-', '', $text ) ) );
-		$tokens = preg_split( '/\s+/', trim( $clean ), -1, PREG_SPLIT_NO_EMPTY );
-
-		$topics      = array();
 		$token_count = count( $tokens );
+		$topics      = array();
 
-		$is_content_token = static function ( string $t ) use ( $stop_words, $min_len ): bool {
-			return strlen( $t ) >= $min_len && ! isset( $stop_words[ $t ] );
+		$is_content = static function ( string $t ) use ( $min_len, $stop_words ): bool {
+			return ctype_digit( $t ) || ( strlen( $t ) >= $min_len && ! isset( $stop_words[ $t ] ) );
 		};
 
-		// Count single-word frequencies.
-		foreach ( $tokens as $t ) {
-			if ( $is_content_token( $t ) ) {
-				$topics[ $t ] = ( $topics[ $t ] ?? 0 ) + 1;
-			}
-		}
+		for ( $n = 1; $n <= 4; $n++ ) {
+			for ( $i = 0; $i <= $token_count - $n; $i++ ) {
+				$window = array_slice( $tokens, $i, $n );
 
-		// Count bigram frequencies — both tokens must be content tokens.
-		for ( $i = 0; $i < $token_count - 1; $i++ ) {
-			$a = $tokens[ $i ];
-			$b = $tokens[ $i + 1 ];
-			if ( $is_content_token( $a ) && $is_content_token( $b ) ) {
-				$bigram            = $a . ' ' . $b;
-				$topics[ $bigram ] = ( $topics[ $bigram ] ?? 0 ) + 1;
+				if ( 1 === $n ) {
+					if ( $is_content( $window[0] ) ) {
+						$topics[ $window[0] ] = ( $topics[ $window[0] ] ?? 0 ) + 1;
+					}
+					continue;
+				}
+
+				if ( ! $is_content( $window[0] ) || ! $is_content( $window[ $n - 1 ] ) ) {
+					continue;
+				}
+
+				if ( $n >= 3 ) {
+					$content_count = count( array_filter( $window, $is_content ) );
+					if ( $content_count < (int) ceil( $n / 2 ) ) {
+						continue;
+					}
+				}
+
+				$phrase            = implode( ' ', $window );
+				$topics[ $phrase ] = ( $topics[ $phrase ] ?? 0 ) + 1;
 			}
 		}
 
 		return $topics;
-	}
-
-	/**
-	 * Build stop word map from settings.
-	 *
-	 * @param  array $settings Linkiya settings array.
-	 * @return array<string, int>
-	 */
-	private static function get_stop_words( array $settings ): array {
-		$raw   = $settings['stop_words'] ?? '';
-		$words = array_filter( array_map( 'trim', explode( "\n", strtolower( $raw ) ) ) );
-		return array_fill_keys( array_values( $words ), 1 );
 	}
 
 	/**
@@ -311,7 +433,6 @@ class Linkiya_Matcher {
 	private static function link_first_occurrence( string $content, string $keyword, string $anchor, string $url, string $title, string $target = '_self', string $rel = '' ): string {
 		$linked = false;
 
-		// Split on existing <a> tags AND heading tags — never link inside either.
 		$pattern = '/(<a\b[^>]*>.*?<\/a>|<h[1-6]\b[^>]*>.*?<\/h[1-6]>)/is';
 		$parts   = preg_split( $pattern, $content, -1, PREG_SPLIT_DELIM_CAPTURE );
 
