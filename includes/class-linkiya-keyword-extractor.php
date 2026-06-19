@@ -213,19 +213,20 @@ class Linkiya_Keyword_Extractor {
 		);
 
 		// Pass 1 — extract all candidate keywords and build the corpus DF index.
-		$raw      = array(); // post_id => string[].
-		$df_index = array(); // keyword => int (how many posts contain it).
+		$raw        = array(); // post_id => string[].
+		$raw_title  = array(); // post_id => string[] (title-only keywords, get guaranteed slots).
+		$df_index   = array(); // keyword => int (how many posts contain it).
 
 		foreach ( $posts as $post ) {
 			$title_kws = self::extract_title_keywords( $post->post_title, $min_len, $stop_words );
 			$body_kws  = self::extract_body_keywords( $post->post_content, $min_len, $stop_words );
 			$slug_kws  = self::extract_slug_keywords( get_post_field( 'post_name', $post->ID ), $min_len, $stop_words );
 
-			// Title keywords first (higher priority), then body, then slug.
 			$candidates = array_values( array_unique( array_merge( $title_kws, $body_kws, $slug_kws ) ) );
 			$candidates = apply_filters( 'linkiya_post_keywords', $candidates, $post->ID );
 
-			$raw[ $post->ID ] = $candidates;
+			$raw[ $post->ID ]       = $candidates;
+			$raw_title[ $post->ID ] = array_flip( $title_kws );
 
 			foreach ( $candidates as $kw ) {
 				$df_index[ $kw ] = ( $df_index[ $kw ] ?? 0 ) + 1;
@@ -236,12 +237,15 @@ class Linkiya_Keyword_Extractor {
 		$map = array();
 
 		foreach ( $posts as $post ) {
-			$candidates = $raw[ $post->ID ] ?? array();
+			$candidates  = $raw[ $post->ID ] ?? array();
+			$title_index = $raw_title[ $post->ID ] ?? array();
 			if ( empty( $candidates ) ) {
 				continue;
 			}
 
-			// Group candidates by n-gram length, filter by DF threshold.
+			// Group candidates by n-gram length.
+			// Title keywords bypass the DF threshold — they are guaranteed slots because
+			// the post title IS the post's identity and must always be matchable.
 			$by_size = array(
 				4 => array(),
 				3 => array(),
@@ -253,22 +257,29 @@ class Linkiya_Keyword_Extractor {
 				$n_words   = substr_count( $kw, ' ' ) + 1;
 				$n_clamped = min( $n_words, 4 );
 				$df        = $df_index[ $kw ] ?? 1;
+				$from_title = isset( $title_index[ $kw ] );
 
-				if ( $df > $df_thresholds[ $n_clamped ] ) {
+				// Body keywords filtered by DF threshold; title keywords always included.
+				if ( ! $from_title && $df > $df_thresholds[ $n_clamped ] ) {
 					continue;
 				}
 
 				$by_size[ $n_clamped ][] = array(
-					'kw' => $kw,
-					'df' => $df,
+					'kw'         => $kw,
+					'df'         => $df,
+					'from_title' => $from_title,
 				);
 			}
 
-			// Within each tier, sort rarest first (lowest DF), then longer first on ties.
+			// Within each tier: title keywords first, then rarest body keywords.
 			foreach ( $by_size as $n => &$tier ) {
 				usort(
 					$tier,
 					static function ( $a, $b ) {
+						// Title keywords always come first.
+						if ( $a['from_title'] !== $b['from_title'] ) {
+							return $a['from_title'] ? -1 : 1;
+						}
 						if ( $a['df'] !== $b['df'] ) {
 							return $a['df'] - $b['df'];
 						}
@@ -279,14 +290,22 @@ class Linkiya_Keyword_Extractor {
 			unset( $tier );
 
 			// Apply slot budget and compute IDF weights.
+			// Title keywords get their own guaranteed slots on top of body slots.
 			$keywords    = array();
 			$idf_weights = array();
 
 			foreach ( array( 4, 3, 2, 1 ) as $n ) {
-				$taken = 0;
+				$taken       = 0;
+				$title_taken = 0;
+				$title_slots = 2; // guaranteed title keyword slots per tier.
 				foreach ( $by_size[ $n ] as $item ) {
-					if ( $taken >= $slot_budget[ $n ] ) {
+					$at_body_limit  = ! $item['from_title'] && $taken >= $slot_budget[ $n ];
+					$at_title_limit = $item['from_title'] && $title_taken >= $title_slots;
+					if ( $at_body_limit && $at_title_limit ) {
 						break;
+					}
+					if ( $at_body_limit || $at_title_limit ) {
+						continue;
 					}
 					$kw = $item['kw'];
 					$df = $item['df'];
@@ -294,7 +313,11 @@ class Linkiya_Keyword_Extractor {
 					$idf                = log( ( $total_posts + 1 ) / ( $df + 1 ) ) + 1.0;
 					$keywords[]         = $kw;
 					$idf_weights[ $kw ] = round( $idf, 4 );
-					++$taken;
+					if ( $item['from_title'] ) {
+						++$title_taken;
+					} else {
+						++$taken;
+					}
 				}
 			}
 
