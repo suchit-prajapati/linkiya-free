@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Linkiya_Keyword_Extractor {
 
-	const CACHE_KEY    = 'linkiya_keyword_map_v3';
+	const CACHE_KEY    = 'linkiya_keyword_map_v4';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
 	/**
@@ -525,8 +525,6 @@ class Linkiya_Keyword_Extractor {
 		$core   = preg_split( '/[:\|—–]/', $title, 2 );
 		$title  = trim( $core[0] );
 		$tokens = self::tokenize( $title );
-		// Remove pure-numeric tokens from title (e.g. "11" from "11 Practical Tips").
-		$tokens = array_values( array_filter( $tokens, fn( $t ) => ! ctype_digit( $t ) ) );
 		return self::tokens_to_ngrams( $tokens, $min_len, $stop_words, 4 );
 	}
 
