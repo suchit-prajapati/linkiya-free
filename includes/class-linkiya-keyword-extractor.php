@@ -254,9 +254,9 @@ class Linkiya_Keyword_Extractor {
 			);
 
 			foreach ( $candidates as $kw ) {
-				$n_words   = substr_count( $kw, ' ' ) + 1;
-				$n_clamped = min( $n_words, 4 );
-				$df        = $df_index[ $kw ] ?? 1;
+				$n_words    = substr_count( $kw, ' ' ) + 1;
+				$n_clamped  = min( $n_words, 4 );
+				$df         = $df_index[ $kw ] ?? 1;
 				$from_title = isset( $title_index[ $kw ] );
 
 				// Body keywords filtered by DF threshold; title keywords always included.
@@ -264,21 +264,37 @@ class Linkiya_Keyword_Extractor {
 					continue;
 				}
 
+				// "Pure" = every token in the n-gram meets min_len and is not a stop word.
+				// Pure n-grams make better anchors (e.g. "healthy boundaries" > "boundaries without").
+				$kw_tokens = explode( ' ', $kw );
+				$pure      = true;
+				foreach ( $kw_tokens as $t ) {
+					if ( strlen( $t ) < $min_len || isset( $stop_words[ $t ] ) ) {
+						$pure = false;
+						break;
+					}
+				}
+
 				$by_size[ $n_clamped ][] = array(
 					'kw'         => $kw,
 					'df'         => $df,
 					'from_title' => $from_title,
+					'pure'       => $pure,
 				);
 			}
 
-			// Within each tier: title keywords first, then rarest body keywords.
+			// Sort: pure title keywords first, then impure title, then body (rarest first).
 			foreach ( $by_size as $n => &$tier ) {
 				usort(
 					$tier,
 					static function ( $a, $b ) {
-						// Title keywords always come first.
+						// Title before body.
 						if ( $a['from_title'] !== $b['from_title'] ) {
 							return $a['from_title'] ? -1 : 1;
+						}
+						// Within title: pure (all content tokens) before impure.
+						if ( $a['from_title'] && $a['pure'] !== $b['pure'] ) {
+							return $a['pure'] ? -1 : 1;
 						}
 						if ( $a['df'] !== $b['df'] ) {
 							return $a['df'] - $b['df'];
