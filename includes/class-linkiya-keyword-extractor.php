@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Linkiya_Keyword_Extractor {
 
-	const CACHE_KEY    = 'linkiya_keyword_map_v4';
+	const CACHE_KEY    = 'linkiya_keyword_map_v5';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
 	/**
@@ -414,7 +414,7 @@ class Linkiya_Keyword_Extractor {
 				$kw_tokens = explode( ' ', $kw );
 				$pure      = true;
 				foreach ( $kw_tokens as $t ) {
-					if ( strlen( $t ) < $min_len || isset( $stop_words[ $t ] ) ) {
+					if ( ! ctype_digit( $t ) && ( strlen( $t ) < $min_len || isset( $stop_words[ $t ] ) ) ) {
 						$pure = false;
 						break;
 					}
