@@ -456,13 +456,24 @@ class Linkiya_Matcher {
 	/**
 	 * Check if $keyword appears as a whole word (case-insensitive) in $text.
 	 *
+	 * Allows up to one short stop word (≤4 chars) between each token so that
+	 * an indexed keyword like "control anger relationships" (stop word "in" removed
+	 * at index time) still matches "Control Anger in Relationships" in the text.
+	 *
 	 * @param  string $keyword Word or phrase to search for.
 	 * @param  string $text    Plain text to search within.
 	 * @return bool
 	 */
 	private static function keyword_exists_in_text( string $keyword, string $text ): bool {
-		$escaped = preg_quote( $keyword, '/' );
-		return (bool) preg_match( '/\b' . $escaped . '\b/iu', $text );
+		$tokens = explode( ' ', $keyword );
+		if ( count( $tokens ) < 2 ) {
+			$escaped = preg_quote( $keyword, '/' );
+			return (bool) preg_match( '/\b' . $escaped . '\b/iu', $text );
+		}
+		// Between each pair of tokens, allow an optional single stop word (1–4 chars).
+		$parts   = array_map( fn( $t ) => preg_quote( $t, '/' ), $tokens );
+		$pattern = '/\b' . implode( '(?:\s+\w{1,4})?\s+', $parts ) . '\b/iu';
+		return (bool) preg_match( $pattern, $text );
 	}
 
 	/**
