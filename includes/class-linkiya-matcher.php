@@ -79,9 +79,25 @@ class Linkiya_Matcher {
 		$stripped   = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
 		$plain_text = wp_strip_all_tags( $stripped );
 
+		// Fetch the current post title to include in topic extraction.
+		// The title is the strongest signal of what the article is about.
+		$current_post_id    = get_the_ID();
+		$current_post_title = $current_post_id ? get_the_title( $current_post_id ) : '';
+
 		// ── 3. Extract content topics with frequencies ─────────────────────────
 
+		// Extract from body first.
 		$content_topics = self::extract_content_topics( $plain_text );
+
+		// Extract from title and boost each term by 3× (title = primary topic signal).
+		// This ensures "Control Anger" from the title always scores above incidental
+		// body matches, even when the body is short.
+		if ( '' !== $current_post_title ) {
+			$title_topics = self::extract_content_topics( $current_post_title );
+			foreach ( $title_topics as $topic => $freq ) {
+				$content_topics[ $topic ] = ( $content_topics[ $topic ] ?? 0 ) + ( $freq * 3 );
+			}
+		}
 
 		$topic_lookup = array();
 		foreach ( $content_topics as $topic => $freq ) {
@@ -92,7 +108,6 @@ class Linkiya_Matcher {
 
 		// ── 4. Load current post's taxonomy terms for overlap scoring ──────────
 
-		$current_post_id   = get_the_ID();
 		$current_tax_terms = array();
 
 		if ( $current_post_id ) {
@@ -140,8 +155,9 @@ class Linkiya_Matcher {
 				$n_words = substr_count( $keyword, ' ' ) + 1;
 				$freq    = $topic_lookup[ $kw_lower ] ?? 1;
 
-				// Single-word gate: must appear at least 2 times to reduce false positives.
-				if ( 1 === $n_words && $freq < 2 ) {
+				// Single-word gate: title boost means a score of 3 even for one mention,
+				// so gate on score after IDF rather than raw frequency.
+				if ( 1 === $n_words && $freq < 1 ) {
 					continue;
 				}
 
@@ -249,8 +265,8 @@ class Linkiya_Matcher {
 			$n_words = substr_count( $anchor_kw, ' ' ) + 1;
 			$freq    = $topic_lookup[ strtolower( $anchor_kw ) ] ?? 0;
 
-			// Single-word partial matches require ≥2 occurrences to reduce noise.
-			if ( 1 === $n_words && $freq < 2 ) {
+			// Single-word partial matches require at least 1 occurrence.
+			if ( 1 === $n_words && $freq < 1 ) {
 				continue;
 			}
 
