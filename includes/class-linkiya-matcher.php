@@ -361,6 +361,10 @@ class Linkiya_Matcher {
 		// an accepted longer keyword B, suppress A — it would link the same text
 		// that B already covers.
 
+		// Normalise scores to a 0–100 confidence value using the top score as ceiling.
+		$max_score = ! empty( $scored ) ? max( array_column( $scored, 'score' ) ) : 1.0;
+		$max_score = max( $max_score, 0.0001 );
+
 		$matched_keywords = array();
 		$accepted_phrases = array();
 		$suggestions      = array();
@@ -395,6 +399,7 @@ class Linkiya_Matcher {
 
 			$matched_keywords[ $kw ] = true;
 			$accepted_phrases[]      = $kw;
+			$item['confidence']      = (int) round( ( $item['score'] / $max_score ) * 100 );
 			unset( $item['score'] );
 			$suggestions[] = $item;
 		}

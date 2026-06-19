@@ -359,6 +359,9 @@ function LinkiyaSidebar() {
                                                 displayUrl = s.url;
                                             }
 
+                                            const confidence = s.confidence ?? 100;
+                                            const confLevel  = confidence >= 70 ? 'high' : confidence >= 40 ? 'medium' : 'low';
+
                                             return (
                                                 <div key={ key } className={ `linkiya-suggestion-row${ isAi ? ' linkiya-suggestion-row--ai' : '' }` }>
                                                     <div className="linkiya-suggestion-main">
@@ -415,6 +418,12 @@ function LinkiyaSidebar() {
                                                             />
                                                         </div>
                                                     ) }
+                                                    <div className="linkiya-confidence" title={ `${ confidence }% match confidence` }>
+                                                        <div
+                                                            className={ `linkiya-confidence-fill linkiya-confidence-fill--${ confLevel }` }
+                                                            style={ { width: `${ confidence }%` } }
+                                                        />
+                                                    </div>
                                                 </div>
                                             );
                                         } ) }

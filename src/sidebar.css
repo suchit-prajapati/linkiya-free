@@ -219,6 +219,25 @@
 	width: fit-content;
 }
 
+/* ── Confidence bar ────────────────────────────────────────── */
+
+.linkiya-confidence {
+	height: 3px;
+	background: #f3f4f6;
+	border-radius: 0 0 8px 8px;
+	overflow: hidden;
+}
+
+.linkiya-confidence-fill {
+	height: 100%;
+	border-radius: 0 0 8px 8px;
+	transition: width 0.3s ease;
+}
+
+.linkiya-confidence-fill--high   { background: #22c55e; }
+.linkiya-confidence-fill--medium { background: #f59e0b; }
+.linkiya-confidence-fill--low    { background: #f97316; }
+
 /* ── Edit anchor button ─────────────────────────────────────── */
 
 .linkiya-edit-anchor-btn {
