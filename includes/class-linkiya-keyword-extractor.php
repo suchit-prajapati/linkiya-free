@@ -349,13 +349,23 @@ class Linkiya_Keyword_Extractor {
 	/**
 	 * Extract n-grams (singles, bi, tri, quad) from a post title.
 	 *
+	 * Strips the subtitle portion (everything after : or —) so that
+	 * "How to Control Anger in Relationships: 11 Practical Techniques"
+	 * only indexes keywords from "How to Control Anger in Relationships",
+	 * preventing numbers and subtitle words from polluting the keyword map.
+	 *
 	 * @param string            $title      Post title.
 	 * @param int               $min_len    Minimum token character length.
 	 * @param array<string,int> $stop_words Stop word lookup map.
 	 * @return string[]
 	 */
 	public static function extract_title_keywords( string $title, int $min_len, array $stop_words ): array {
+		// Strip subtitle after colon or em-dash — these are rarely the topic.
+		$core  = preg_split( '/[:\|—–]/', $title, 2 );
+		$title = trim( $core[0] );
 		$tokens = self::tokenize( $title );
+		// Remove pure-numeric tokens from title (e.g. "11" from "11 Practical Tips").
+		$tokens = array_values( array_filter( $tokens, fn( $t ) => ! ctype_digit( $t ) ) );
 		return self::tokens_to_ngrams( $tokens, $min_len, $stop_words, 4 );
 	}
 
