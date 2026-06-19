@@ -79,15 +79,10 @@ class Linkiya_Matcher {
 		$stripped   = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
 		$plain_text = wp_strip_all_tags( $stripped );
 
-		// Fetch the current post title to include in topic extraction and verbatim matching.
+		// Fetch the current post title to include in topic extraction.
 		// The title is the strongest signal of what the article is about.
 		$current_post_id    = get_the_ID();
 		$current_post_title = $current_post_id ? get_the_title( $current_post_id ) : '';
-		$title_plain        = wp_strip_all_tags( $current_post_title );
-
-		// Combined search text: body + title. Used for verbatim keyword existence checks
-		// so that keywords like "control anger" found in the title can be used as anchors.
-		$searchable_text = $plain_text . ' ' . $title_plain;
 
 		// ── 3. Extract content topics with frequencies ─────────────────────────
 
@@ -153,7 +148,7 @@ class Linkiya_Matcher {
 					continue;
 				}
 
-				if ( ! self::keyword_exists_in_text( $keyword, $searchable_text ) ) {
+				if ( ! self::keyword_exists_in_text( $keyword, $plain_text ) ) {
 					continue;
 				}
 
@@ -170,13 +165,14 @@ class Linkiya_Matcher {
 				$idf   = $idf_weights[ $keyword ] ?? ( log( 2.0 ) + 1.0 );
 				$score = $tf * $idf;
 
-				// N-gram length bonus: longer phrases are more specific.
+				// N-gram length bonus: longer phrases are far more specific and make
+				// better anchor text — always prefer "control anger" over "control".
 				if ( $n_words >= 4 ) {
-					$score *= 2.0;
+					$score *= 8.0;
 				} elseif ( 3 === $n_words ) {
-					$score *= 1.6;
+					$score *= 5.0;
 				} elseif ( 2 === $n_words ) {
-					$score *= 1.3;
+					$score *= 3.0;
 				}
 
 				// Position bonus: first occurrence in top 25% of text scores up to +40%.
@@ -254,16 +250,16 @@ class Linkiya_Matcher {
 				continue;
 			}
 
-			$both_present = self::keyword_exists_in_text( $top2[0], $searchable_text )
-						&& self::keyword_exists_in_text( $top2[1], $searchable_text );
+			$both_present = self::keyword_exists_in_text( $top2[0], $plain_text )
+						&& self::keyword_exists_in_text( $top2[1], $plain_text );
 
 			if ( ! $both_present ) {
 				continue;
 			}
 
-			// Verify the anchor keyword itself exists verbatim in searchable text.
+			// Verify the anchor keyword itself exists verbatim in body text.
 			$anchor_kw = $top2[0];
-			if ( ! self::keyword_exists_in_text( $anchor_kw, $searchable_text ) ) {
+			if ( ! self::keyword_exists_in_text( $anchor_kw, $plain_text ) ) {
 				continue;
 			}
 
