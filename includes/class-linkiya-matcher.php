@@ -144,25 +144,12 @@ class Linkiya_Matcher {
 			2  // min bigrams only
 		);
 
-		// Pronouns/determiners that make poor anchor text even if they pass min_len.
-		$weak_tokens = array_flip( array( 'your', 'their', 'their', 'our', 'its', 'this', 'that', 'these', 'those', 'here', 'there', 'what', 'when', 'where', 'which', 'who', 'whom', 'have', 'been', 'will', 'just', 'also', 'more', 'most', 'some', 'such', 'each', 'every', 'many', 'much', 'very', 'away', 'mean', 'means', 'push', 'pushes', 'pushing', 'know', 'make', 'makes', 'making', 'take', 'takes', 'help', 'helps', 'feel', 'feels', 'keep', 'keeps', 'come', 'goes', 'give', 'gives', 'want', 'wants', 'need', 'needs', 'show', 'shows', 'find', 'finds', 'says', 'said', 'like', 'time', 'ways', 'tips', 'life', 'self' ) );
-
 		// Index bigrams by each content token they contain.
+		// Since body_bigrams are generated using get_stop_words() (which now includes
+		// built-in weak tokens), all bigrams here are already clean anchor candidates.
 		$token_to_bigrams = array();
 		foreach ( $body_bigrams as $bigram ) {
-			$bigram_tokens = explode( ' ', $bigram );
-			// Skip bigrams that contain a weak/pronoun token — bad anchor text.
-			$has_weak = false;
-			foreach ( $bigram_tokens as $bt ) {
-				if ( isset( $weak_tokens[ $bt ] ) ) {
-					$has_weak = true;
-					break;
-				}
-			}
-			if ( $has_weak ) {
-				continue;
-			}
-			foreach ( $bigram_tokens as $t ) {
+			foreach ( explode( ' ', $bigram ) as $t ) {
 				if ( strlen( $t ) >= $min_len && ! isset( $stop_words[ $t ] ) ) {
 					$token_to_bigrams[ $t ][] = $bigram;
 				}

@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Linkiya_Keyword_Extractor {
 
-	const CACHE_KEY    = 'linkiya_keyword_map_v2';
+	const CACHE_KEY    = 'linkiya_keyword_map_v3';
 	const CACHE_EXPIRY = HOUR_IN_SECONDS;
 
 	/**
@@ -41,6 +41,37 @@ class Linkiya_Keyword_Extractor {
 	 *
 	 * @return array<string, int>
 	 */
+	/**
+	 * Built-in stop words that are always excluded regardless of user settings.
+	 * These are words that pass min_len but make poor anchor text.
+	 */
+	private static function get_builtin_stop_words(): array {
+		return array_flip( array(
+			// Articles / prepositions / conjunctions
+			'with', 'from', 'this', 'that', 'these', 'those', 'than', 'then',
+			'when', 'where', 'what', 'which', 'while', 'after', 'before',
+			'about', 'above', 'below', 'between', 'through', 'during', 'into',
+			'onto', 'upon', 'within', 'without', 'against', 'toward', 'towards',
+			'because', 'although', 'however', 'therefore', 'whether',
+			// Pronouns / determiners
+			'your', 'their', 'ours', 'mine', 'hers', 'himself', 'herself',
+			'itself', 'yourself', 'ourselves', 'themselves',
+			'here', 'there', 'where',
+			// Common weak verbs
+			'have', 'been', 'will', 'just', 'also', 'more', 'most', 'some',
+			'such', 'each', 'every', 'many', 'much', 'very', 'away', 'back',
+			'make', 'makes', 'making', 'made', 'take', 'takes', 'taking',
+			'help', 'helps', 'feel', 'feels', 'keep', 'keeps', 'come', 'goes',
+			'give', 'gives', 'want', 'wants', 'need', 'needs', 'show', 'shows',
+			'find', 'finds', 'says', 'said', 'know', 'knew', 'mean', 'means',
+			'push', 'pushing', 'hurt', 'hurts', 'hurting', 'setting', 'getting',
+			'putting', 'letting', 'trying', 'doing', 'being', 'having',
+			// Common filler nouns
+			'ways', 'tips', 'life', 'self', 'time', 'like', 'type', 'kind',
+			'part', 'side', 'case', 'form', 'term', 'area', 'role', 'step',
+		) );
+	}
+
 	public static function get_stop_words(): array {
 		if ( null !== self::$stop_words_cache ) {
 			return self::$stop_words_cache;
@@ -53,7 +84,8 @@ class Linkiya_Keyword_Extractor {
 			array_map( 'trim', explode( "\n", strtolower( $raw ) ) )
 		);
 
-		self::$stop_words_cache = array_fill_keys( array_values( $words ), 1 );
+		$user_words = array_fill_keys( array_values( $words ), 1 );
+		self::$stop_words_cache = array_merge( self::get_builtin_stop_words(), $user_words );
 		return self::$stop_words_cache;
 	}
 
