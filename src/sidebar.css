@@ -124,6 +124,8 @@
 
 .linkiya-suggestion-main .components-checkbox-control__label {
 	width: 100%;
+	min-width: 0;
+	overflow: hidden;
 }
 
 /* ── Card label content ────────────────────────────────────── */
@@ -133,6 +135,8 @@
 	flex-direction: column;
 	gap: 5px;
 	width: 100%;
+	overflow: hidden;
+	min-width: 0;
 }
 
 /* Top row: anchor chip + type badge */
@@ -184,7 +188,9 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	max-width: 100%;
+	display: block;
+	width: 0;
+	min-width: 100%;
 }
 
 /* URL row */
@@ -194,7 +200,9 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	max-width: 100%;
+	display: block;
+	width: 0;
+	min-width: 100%;
 	font-family: monospace;
 }
 
