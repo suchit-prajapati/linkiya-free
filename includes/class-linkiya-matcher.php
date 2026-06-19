@@ -128,30 +128,28 @@ class Linkiya_Matcher {
 			}
 		}
 
-		// ── 5. Build phrase list from searchable text ─────────────────────────
+		// ── 5. Build bigram lookup from searchable text ───────────────────────
 		//
-		// Extract every n-gram (1–4 words) that actually appears in the searchable
-		// text. This becomes the candidate anchor pool. We then match each post's
-		// indexed keywords against this pool — both exact matches AND token-overlap
-		// matches (e.g. body has "emotional boundaries", post indexed "boundaries").
+		// Extract only bigrams from the body+title. We use these so that when a
+		// post is indexed as "boundaries" (single), we can suggest "emotional boundaries"
+		// (bigram) if it appears in the body — but ONLY bigrams, never longer fragments.
 
-		$min_len    = Linkiya_Keyword_Extractor::get_min_word_len();
-		$stop_words = Linkiya_Keyword_Extractor::get_stop_words();
-		$body_ngrams = Linkiya_Keyword_Extractor::tokens_to_ngrams(
+		$min_len     = Linkiya_Keyword_Extractor::get_min_word_len();
+		$stop_words  = Linkiya_Keyword_Extractor::get_stop_words();
+		$body_bigrams = Linkiya_Keyword_Extractor::tokens_to_ngrams(
 			Linkiya_Keyword_Extractor::tokenize( $searchable_text ),
 			$min_len,
 			$stop_words,
-			4
+			2, // max bigrams only
+			2  // min bigrams only
 		);
 
-		// Index body phrases by each individual content token they contain,
-		// so we can quickly find all body phrases that share a token with a keyword.
-		$token_to_phrases = array();
-		foreach ( $body_ngrams as $phrase ) {
-			$phrase_tokens = explode( ' ', $phrase );
-			foreach ( $phrase_tokens as $t ) {
+		// Index bigrams by each content token they contain.
+		$token_to_bigrams = array();
+		foreach ( $body_bigrams as $bigram ) {
+			foreach ( explode( ' ', $bigram ) as $t ) {
 				if ( strlen( $t ) >= $min_len && ! isset( $stop_words[ $t ] ) ) {
-					$token_to_phrases[ $t ][] = $phrase;
+					$token_to_bigrams[ $t ][] = $bigram;
 				}
 			}
 		}
@@ -176,82 +174,68 @@ class Linkiya_Matcher {
 			$best_keyword = null;
 			$best_score   = 0.0;
 
-			// Collect candidate anchors: the indexed keyword itself (exact) PLUS any
-			// body phrase that shares a content token with the indexed keyword.
-			// This lets "emotional boundaries" be suggested for a post indexed as "boundaries".
-			$anchor_candidates = array(); // anchor => [ 'kw' => indexed_keyword, 'exact' => bool ]
-
 			foreach ( $entry['keywords'] as $keyword ) {
-				$kw_lower  = strtolower( $keyword );
-				$kw_tokens = explode( ' ', $kw_lower );
+				$kw_lower = strtolower( $keyword );
+				$n_words  = substr_count( $keyword, ' ' ) + 1;
 
-				// Exact match — the indexed keyword itself appears verbatim in the text.
-				if ( self::keyword_exists_in_text( $keyword, $searchable_text ) ) {
-					$anchor_candidates[ $kw_lower ] = array( 'kw' => $keyword, 'exact' => true );
-				}
+				// For single-word indexed keywords, also check if a body bigram
+				// containing that word exists — prefer the bigram as anchor text.
+				// e.g. post indexed "boundaries" + body has "emotional boundaries" → suggest bigram.
+				$candidates = array(); // anchor_lower => is_bigram_upgrade
 
-				// Token-overlap match — find body phrases that contain at least one
-				// content token from this keyword, then verify whole-word presence.
-				foreach ( $kw_tokens as $token ) {
-					if ( strlen( $token ) < $min_len || isset( $stop_words[ $token ] ) ) {
-						continue;
-					}
-					if ( empty( $token_to_phrases[ $token ] ) ) {
-						continue;
-					}
-					foreach ( $token_to_phrases[ $token ] as $body_phrase ) {
-						$bp_lower = strtolower( $body_phrase );
-						if ( isset( $anchor_candidates[ $bp_lower ] ) ) {
-							continue;
-						}
-						if ( self::keyword_exists_in_text( $body_phrase, $searchable_text ) ) {
-							$anchor_candidates[ $bp_lower ] = array( 'kw' => $keyword, 'exact' => false );
+				if ( 1 === $n_words && ! empty( $token_to_bigrams[ $kw_lower ] ) ) {
+					foreach ( $token_to_bigrams[ $kw_lower ] as $bigram ) {
+						$bl = strtolower( $bigram );
+						if ( ! isset( $already_linked_texts[ $bl ] )
+							&& self::keyword_exists_in_text( $bigram, $searchable_text ) ) {
+							$candidates[ $bl ] = true; // bigram upgrade
 						}
 					}
 				}
-			}
 
-			foreach ( $anchor_candidates as $anchor_lower => $meta ) {
-				if ( isset( $already_linked_texts[ $anchor_lower ] ) ) {
-					continue;
+				// Always consider the indexed keyword itself (exact match).
+				if ( self::keyword_exists_in_text( $keyword, $searchable_text )
+					&& ! isset( $already_linked_texts[ $kw_lower ] ) ) {
+					$candidates[ $kw_lower ] = false; // exact, no upgrade
 				}
 
-				$anchor  = $meta['exact'] ? $meta['kw'] : $anchor_lower;
-				$n_words = substr_count( $anchor_lower, ' ' ) + 1;
-				$freq    = $topic_lookup[ $anchor_lower ] ?? 1;
+				foreach ( $candidates as $anchor_lower => $is_upgrade ) {
+					$a_words = substr_count( $anchor_lower, ' ' ) + 1;
+					$freq    = $topic_lookup[ $anchor_lower ] ?? ( $topic_lookup[ $kw_lower ] ?? 1 );
 
-				if ( 1 === $n_words && $freq < 1 ) {
-					continue;
-				}
+					if ( 1 === $a_words && $freq < 1 ) {
+						continue;
+					}
 
-				$tf    = $freq / $total_words;
-				$idf   = $idf_weights[ $meta['kw'] ] ?? ( log( 2.0 ) + 1.0 );
-				$score = $tf * $idf;
+					$tf    = $freq / $total_words;
+					$idf   = $idf_weights[ $keyword ] ?? ( log( 2.0 ) + 1.0 );
+					$score = $tf * $idf;
 
-				// Exact match bonus — indexed keyword is a direct signal.
-				if ( $meta['exact'] ) {
-					$score *= 1.2;
-				}
+					// Bigram upgrade bonus — body phrase is more specific than the single.
+					if ( $is_upgrade ) {
+						$score *= 1.5;
+					}
 
-				// N-gram length bonus: longer phrases make better anchor text.
-				if ( $n_words >= 4 ) {
-					$score *= 8.0;
-				} elseif ( 3 === $n_words ) {
-					$score *= 5.0;
-				} elseif ( 2 === $n_words ) {
-					$score *= 3.0;
-				}
+					// N-gram length bonus.
+					if ( $a_words >= 4 ) {
+						$score *= 8.0;
+					} elseif ( 3 === $a_words ) {
+						$score *= 5.0;
+					} elseif ( 2 === $a_words ) {
+						$score *= 3.0;
+					}
 
-				// Position bonus: first occurrence in top 25% of text scores up to +40%.
-				$first_pos = mb_stripos( $searchable_text, $anchor_lower );
-				if ( false !== $first_pos ) {
-					$pos_ratio = $first_pos / max( 1, mb_strlen( $searchable_text ) );
-					$score    *= 1.0 + max( 0.0, ( 0.25 - $pos_ratio ) * 1.6 );
-				}
+					// Position bonus: first occurrence in top 25% of text scores up to +40%.
+					$first_pos = mb_stripos( $searchable_text, $anchor_lower );
+					if ( false !== $first_pos ) {
+						$pos_ratio = $first_pos / max( 1, mb_strlen( $searchable_text ) );
+						$score    *= 1.0 + max( 0.0, ( 0.25 - $pos_ratio ) * 1.6 );
+					}
 
-				if ( $score > $best_score ) {
-					$best_score   = $score;
-					$best_keyword = $anchor;
+					if ( $score > $best_score ) {
+						$best_score   = $score;
+						$best_keyword = $is_upgrade ? $anchor_lower : $keyword;
+					}
 				}
 			}
 
