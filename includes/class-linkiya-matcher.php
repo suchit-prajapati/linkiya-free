@@ -211,8 +211,23 @@ class Linkiya_Matcher {
 					$idf   = $idf_weights[ $keyword ] ?? ( log( 2.0 ) + 1.0 );
 					$score = $tf * $idf;
 
-					// Bigram upgrade bonus — body phrase is more specific than the single.
 					if ( $is_upgrade ) {
+						// Count how many tokens of the bigram appear in this post's title.
+						// "emotional boundaries" post title contains BOTH tokens → strong match.
+						// "emotional strength" post title contains only "emotional" → weaker.
+						$post_title_lower  = strtolower( $entry['title'] );
+						$anchor_tokens     = explode( ' ', $anchor_lower );
+						$title_token_hits  = 0;
+						foreach ( $anchor_tokens as $at ) {
+							if ( preg_match( '/\b' . preg_quote( $at, '/' ) . '\b/i', $post_title_lower ) ) {
+								++$title_token_hits;
+							}
+						}
+						// Only accept bigram upgrade if ALL tokens appear in the post title.
+						// This prevents "emotional strength" post from stealing "emotional boundaries".
+						if ( $title_token_hits < count( $anchor_tokens ) ) {
+							continue;
+						}
 						$score *= 1.5;
 					}
 
