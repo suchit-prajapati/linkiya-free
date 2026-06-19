@@ -79,10 +79,15 @@ class Linkiya_Matcher {
 		$stripped   = preg_replace( '/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $stripped );
 		$plain_text = wp_strip_all_tags( $stripped );
 
-		// Fetch the current post title to include in topic extraction.
+		// Fetch the current post title to include in topic extraction and verbatim matching.
 		// The title is the strongest signal of what the article is about.
 		$current_post_id    = get_the_ID();
 		$current_post_title = $current_post_id ? get_the_title( $current_post_id ) : '';
+		$title_plain        = wp_strip_all_tags( $current_post_title );
+
+		// Combined search text: body + title. Used for verbatim keyword existence checks
+		// so that keywords like "control anger" found in the title can be used as anchors.
+		$searchable_text = $plain_text . ' ' . $title_plain;
 
 		// ── 3. Extract content topics with frequencies ─────────────────────────
 
@@ -148,7 +153,7 @@ class Linkiya_Matcher {
 					continue;
 				}
 
-				if ( ! self::keyword_exists_in_text( $keyword, $plain_text ) ) {
+				if ( ! self::keyword_exists_in_text( $keyword, $searchable_text ) ) {
 					continue;
 				}
 
@@ -249,16 +254,16 @@ class Linkiya_Matcher {
 				continue;
 			}
 
-			$both_present = self::keyword_exists_in_text( $top2[0], $plain_text )
-						&& self::keyword_exists_in_text( $top2[1], $plain_text );
+			$both_present = self::keyword_exists_in_text( $top2[0], $searchable_text )
+						&& self::keyword_exists_in_text( $top2[1], $searchable_text );
 
 			if ( ! $both_present ) {
 				continue;
 			}
 
-			// Bug 1 fix: verify the anchor keyword itself exists verbatim in the content.
+			// Verify the anchor keyword itself exists verbatim in searchable text.
 			$anchor_kw = $top2[0];
-			if ( ! self::keyword_exists_in_text( $anchor_kw, $plain_text ) ) {
+			if ( ! self::keyword_exists_in_text( $anchor_kw, $searchable_text ) ) {
 				continue;
 			}
 
