@@ -6,7 +6,7 @@
  * @category Admin
  * @author   Linkiya
  * @license  GPL-2.0-or-later
- * @link     https://linkiya.com
+ * @link     https://www.mypluginstore.com/linkiya
  */
 
 defined( 'ABSPATH' ) || exit;
