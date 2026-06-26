@@ -4,7 +4,7 @@
  *
  * @package  Linkiya
  * @category Admin
- * @author   Linkiya
+ * @author   My Plugin Store Team
  * @license  GPL-2.0-or-later
  * @link     https://www.mypluginstore.com/linkiya
  */
